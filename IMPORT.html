@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>Import Line Report</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{
+  --bg:#0f1826; --surf:#16233a; --surf2:#1e2e49; --line:#2c405f;
+  --txt:#eef2f7; --dim:#8b9cb5; --dimmer:#5d7a9c;
+  --red:#e0483d; --grn:#2fa36a; --amb:#d99a2b; --blu:#3d8fd1;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0}
+body{background:var(--bg);color:var(--txt);font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;
+  -webkit-font-smoothing:antialiased;padding:12px 11px 60px;font-size:15px}
+.wrap{max-width:640px;margin:0 auto}
+h1{font-family:'Barlow Condensed',sans-serif;font-size:24px;font-weight:700;margin:2px 0 12px}
+.card{background:var(--surf);border:1px solid var(--line);border-radius:10px;padding:13px;margin-bottom:11px}
+.lab{font-family:'Barlow Condensed',sans-serif;font-size:12.5px;font-weight:700;letter-spacing:.16em;
+  text-transform:uppercase;color:var(--dim);margin:0 0 9px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+.grid4{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px}
+label small{display:block;font-size:10.5px;color:var(--dim);letter-spacing:.06em;
+  text-transform:uppercase;margin-bottom:4px;font-weight:600}
+input,select,textarea{width:100%;background:var(--bg);border:1px solid var(--line);border-radius:7px;
+  color:var(--txt);padding:9px 10px;font-size:14px;font-family:inherit}
+input:focus,select:focus,textarea:focus{outline:2px solid var(--blu);outline-offset:-1px}
+.field{margin-bottom:9px}
+button{font-family:'Inter',sans-serif;font-size:14px;font-weight:600;cursor:pointer;
+  background:var(--surf2);color:var(--txt);border:1px solid var(--line);
+  border-radius:8px;padding:11px 12px;min-height:44px}
+button:active{transform:scale(.97)}
+button.primary{background:var(--blu);border-color:var(--blu);color:#fff;width:100%;margin-top:6px}
+.btnrow{display:flex;gap:6px;flex-wrap:wrap;margin-top:9px}
+.btnrow button{flex:1}
+.syncbar{display:flex;align-items:center;gap:8px;font-size:11.5px;color:var(--dim);margin-bottom:11px}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--dimmer)}
+.dot.ok{background:var(--grn)} .dot.err{background:var(--red)} .dot.busy{background:var(--amb)}
+.pitchRow{display:grid;grid-template-columns:56px 1fr 1fr 1fr 1fr;gap:6px;align-items:center;margin-bottom:7px}
+.pitchRow .pcode{font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:17px;text-align:center}
+.pitchhead{display:grid;grid-template-columns:56px 1fr 1fr 1fr 1fr;gap:6px;font-size:9.5px;color:var(--dim);
+  text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;font-weight:600}
+.note{font-size:11.5px;color:var(--dim);line-height:1.55;margin-top:9px}
+.result{font-size:13px;padding:10px;border-radius:8px;margin-top:9px}
+.result.ok{background:#14301f;border:1px solid var(--grn);color:#7fd6a4}
+.result.err{background:#341417;border:1px solid var(--red);color:#f0a3a0}
+</style>
+</head>
+<body>
+<div class="wrap">
+<h1>Import Line Report</h1>
+
+<script>
+const SUPABASE_URL = "https://uaidpyxlbwjcgqzllthv.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVhaWRweXhsYndqY2dxemxsdGh2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODgwMTkxMTEsImV4cCI6MjEwMzU5NTExMX0.B5p0INifmDkz0bI9PUfCQscqmXyr2pnUdf2HipTbTXM";
+</script>
+
+<div class="syncbar"><span class="dot" id="syncDot"></span><span id="syncMsg">Connecting…</span></div>
+
+<div class="card">
+  <p class="lab">Pitcher &amp; outing</p>
+  <div class="grid2">
+    <div class="field"><label><small>Pitcher</small>
+      <select id="fPidSelect" onchange="onPitcherSelect()"></select>
+    </label></div>
+    <div class="field"><label><small>New pitcher name</small><input id="fPidNew" placeholder="Type to add new"></label></div>
+  </div>
+  <div class="grid3">
+    <div class="field"><label><small>Date</small><input id="fDate" type="date"></label></div>
+    <div class="field"><label><small>Level</small>
+      <select id="fLevel"><option>MLB</option><option selected>AAA</option><option>AA</option>
+      <option>A+</option><option>A</option><option>Rk</option><option>COL</option><option>HS</option></select></label></div>
+    <div class="field"><label><small>Season</small><input id="fSeason" inputmode="numeric" value="2026"></label></div>
+  </div>
+  <div class="grid2">
+    <div class="field"><label><small>Opponent</small><input id="fOpp" placeholder="ABQ"></label></div>
+    <div class="field"><label><small>Game ID (blank = auto)</small><input id="fGid" placeholder="auto"></label></div>
+  </div>
+  <div class="btnrow">
+    <button onclick="loadExisting()">Load if this outing already exists</button>
+  </div>
+</div>
+
+<div class="card">
+  <p class="lab">Line score</p>
+  <div class="grid4">
+    <div class="field"><label><small>IP</small><input id="lIP" inputmode="decimal" placeholder="6.0"></label></div>
+    <div class="field"><label><small>H</small><input id="lH" inputmode="numeric"></label></div>
+    <div class="field"><label><small>R</small><input id="lR" inputmode="numeric"></label></div>
+    <div class="field"><label><small>ER</small><input id="lER" inputmode="numeric"></label></div>
+  </div>
+  <div class="grid4">
+    <div class="field"><label><small>BB</small><input id="lBB" inputmode="numeric"></label></div>
+    <div class="field"><label><small>K</small><input id="lK" inputmode="numeric"></label></div>
+    <div class="field"><label><small>HBP</small><input id="lHBP" inputmode="numeric"></label></div>
+    <div class="field"><label><small>HR</small><input id="lHR" inputmode="numeric"></label></div>
+  </div>
+  <div class="grid4">
+    <div class="field"><label><small>Pitches</small><input id="lPitches" inputmode="numeric"></label></div>
+    <div class="field"><label><small>Strikes</small><input id="lStrikes" inputmode="numeric"></label></div>
+    <div class="field"><label><small>Velo min</small><input id="lVeloMin" inputmode="decimal"></label></div>
+    <div class="field"><label><small>Velo max</small><input id="lVeloMax" inputmode="decimal"></label></div>
+  </div>
+  <div class="grid2">
+    <div class="field"><label><small>Velo avg</small><input id="lVeloAvg" inputmode="decimal"></label></div>
+  </div>
+  <div class="field"><label><small>Notes</small><textarea id="lNotes" style="height:60px" placeholder="Anything worth remembering about this outing"></textarea></label></div>
+</div>
+
+<div class="card">
+  <p class="lab">Pitch movement &amp; spin</p>
+  <div class="field"><label><small>Pitch codes in this report — comma separated</small>
+    <input id="pcCodes" value="FF,SI,CT,SL,CH" onchange="renderPcRows()"></label></div>
+  <div class="pitchhead"><div></div><div>Vert Break</div><div>Horz Break</div><div>Spin Rate</div><div>Spin Dir (e.g. 10:55)</div></div>
+  <div id="pcRows"></div>
+  <p class="note">Enter the numbers exactly as shown on your movement/characteristics report — outing value is what matters here (the app's own season-average column isn't needed since this tool computes trends itself).</p>
+</div>
+
+<button class="primary" onclick="saveAll()">Save line report</button>
+<div id="resultBox"></div>
+
+</div>
+
+<script>
+let sb = null;
+let pitchers = [];
+
+function setSync(state, msg){
+  document.getElementById("syncDot").className = "dot"+(state?" "+state:"");
+  document.getElementById("syncMsg").textContent = msg;
+}
+function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function v(id){ return document.getElementById(id).value; }
+function numOrNull(id){ const s = v(id).trim(); return s===""? null : +s; }
+function intOrNull(id){ const s = v(id).trim(); return s===""? null : parseInt(s,10); }
+
+async function init(){
+  try{
+    sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    const { data, error } = await sb.rpc("list_pitchers");
+    if(error) throw error;
+    pitchers = data || [];
+    document.getElementById("fPidSelect").innerHTML = '<option value="">— select —</option>' +
+      pitchers.map(p=>`<option value="${p.id}">${esc(p.name)} (${esc(p.level||"")})</option>`).join("");
+    setSync("ok","Connected");
+  }catch(e){ setSync("err","Connection failed: "+(e.message||e)); }
+  document.getElementById("fDate").value = new Date().toISOString().slice(0,10);
+  renderPcRows();
+}
+function onPitcherSelect(){
+  const id = v("fPidSelect");
+  if(id) document.getElementById("fPidNew").value = "";
+}
+
+function renderPcRows(){
+  const codes = v("pcCodes").split(",").map(s=>s.trim().toUpperCase()).filter(Boolean).slice(0,8);
+  document.getElementById("pcRows").innerHTML = codes.map(code=>`
+    <div class="pitchRow" data-code="${esc(code)}">
+      <div class="pcode">${esc(code)}</div>
+      <input class="pcVert" inputmode="decimal" placeholder="Vert">
+      <input class="pcHorz" inputmode="decimal" placeholder="Horz">
+      <input class="pcSpin" inputmode="numeric" placeholder="Spin">
+      <input class="pcDir" placeholder="10:55">
+    </div>`).join("");
+}
+
+async function getOrCreatePitcher(){
+  const newName = v("fPidNew").trim();
+  const selId = v("fPidSelect");
+  if(newName){
+    const { data, error } = await sb.rpc("create_pitcher", {p_name:newName, p_level:v("fLevel")});
+    if(error){ throw new Error("Couldn't create pitcher: "+error.message); }
+    const created = data[0];
+    pitchers.push(created);
+    return created;
+  }
+  if(selId) return pitchers.find(p=>p.id===selId);
+  throw new Error("Pick or add a pitcher first.");
+}
+
+function currentGid(pitcherName){
+  return v("fGid").trim() || (pitcherName + " " + v("fDate") + " " + (v("fOpp").trim()||"OPP"));
+}
+
+async function loadExisting(){
+  setSync("busy","Looking up outing…");
+  try{
+    const pitcher = await getOrCreatePitcher();
+    const gid = currentGid(pitcher.name);
+    const { data, error } = await sb.rpc("find_outing", {p_game_id: gid});
+    if(error) throw error;
+    const o = data && data[0];
+    if(!o){ setSync("ok","No existing outing found for that Game ID — this will create a new one."); return; }
+    // pull full row via get_pitcher_outings then match, since find_outing doesn't return summary fields
+    const { data: outings } = await sb.rpc("get_pitcher_outings", {p_pitcher_id: pitcher.id});
+    const full = (outings||[]).find(x=>x.id===o.id);
+    if(full){
+      document.getElementById("lIP").value = full.innings_pitched ?? "";
+      document.getElementById("lH").value = full.hits ?? "";
+      document.getElementById("lR").value = full.runs ?? "";
+      document.getElementById("lER").value = full.earned_runs ?? "";
+      document.getElementById("lBB").value = full.walks ?? "";
+      document.getElementById("lK").value = full.strikeouts ?? "";
+      document.getElementById("lHBP").value = full.hit_by_pitch ?? "";
+      document.getElementById("lHR").value = full.home_runs ?? "";
+      document.getElementById("lPitches").value = full.pitch_count ?? "";
+      document.getElementById("lStrikes").value = full.strike_count ?? "";
+      document.getElementById("lVeloMin").value = full.velo_min ?? "";
+      document.getElementById("lVeloMax").value = full.velo_max ?? "";
+      document.getElementById("lVeloAvg").value = full.velo_avg ?? "";
+      document.getElementById("lNotes").value = full.notes ?? "";
+    }
+    const { data: chars } = await sb.rpc("get_outing_characteristics", {p_outing_id: o.id});
+    if(chars && chars.length){
+      document.getElementById("pcCodes").value = chars.map(c=>c.pitch_type).join(",");
+      renderPcRows();
+      chars.forEach(c=>{
+        const row = document.querySelector(`.pitchRow[data-code="${c.pitch_type}"]`);
+        if(row){
+          row.querySelector(".pcVert").value = c.vert_break ?? "";
+          row.querySelector(".pcHorz").value = c.horz_break ?? "";
+          row.querySelector(".pcSpin").value = c.spin_rate ?? "";
+          row.querySelector(".pcDir").value = c.spin_dir ?? "";
+        }
+      });
+    }
+    setSync("ok","Loaded existing outing — editing will update it, not duplicate it.");
+  }catch(e){ setSync("err", e.message||String(e)); }
+}
+
+async function saveAll(){
+  const resultBox = document.getElementById("resultBox");
+  resultBox.innerHTML = "";
+  setSync("busy","Saving…");
+  try{
+    const pitcher = await getOrCreatePitcher();
+    const gid = currentGid(pitcher.name);
+
+    const { data: outRows, error: outErr } = await sb.rpc("import_outing_summary", {
+      p_pitcher_id: pitcher.id, p_date: v("fDate"), p_opponent: v("fOpp").trim()||"OPP",
+      p_level: v("fLevel"), p_season: v("fSeason").trim()||v("fDate").slice(0,4), p_game_id: gid,
+      p_ip: numOrNull("lIP"), p_h: intOrNull("lH"), p_r: intOrNull("lR"), p_er: intOrNull("lER"),
+      p_bb: intOrNull("lBB"), p_k: intOrNull("lK"), p_hbp: intOrNull("lHBP"), p_hr: intOrNull("lHR"),
+      p_pitches: intOrNull("lPitches"), p_strikes: intOrNull("lStrikes"),
+      p_velo_min: numOrNull("lVeloMin"), p_velo_max: numOrNull("lVeloMax"), p_velo_avg: numOrNull("lVeloAvg"),
+      p_notes: v("lNotes").trim()||null
+    });
+    if(outErr) throw outErr;
+    const outing = outRows[0];
+
+    const rows = document.querySelectorAll(".pitchRow");
+    for(const row of rows){
+      const code = row.dataset.code;
+      const vert = row.querySelector(".pcVert").value.trim();
+      const horz = row.querySelector(".pcHorz").value.trim();
+      const spin = row.querySelector(".pcSpin").value.trim();
+      const dir = row.querySelector(".pcDir").value.trim();
+      if(!vert && !horz && !spin && !dir) continue; // skip empty rows
+      const { error: pcErr } = await sb.rpc("upsert_pitch_characteristic", {
+        p_outing_id: outing.id, p_pitch_type: code,
+        p_vert: vert?+vert:null, p_horz: horz?+horz:null, p_spin: spin?+spin:null, p_spin_dir: dir||null
+      });
+      if(pcErr) throw pcErr;
+    }
+
+    setSync("ok","Saved");
+    resultBox.innerHTML = `<div class="result ok">Saved ${esc(pitcher.name)} · ${esc(v("fDate"))} vs ${esc(v("fOpp")||"OPP")}. This outing now feeds their profile.</div>`;
+  }catch(e){
+    setSync("err","Save failed");
+    resultBox.innerHTML = `<div class="result err">${esc(e.message||String(e))}</div>`;
+  }
+}
+
+init();
+</script>
+</body>
+</html>
