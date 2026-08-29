@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>Player Profile</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
+<style>
+:root{--bg:#0f1826;--surf:#16233a;--surf2:#1e2e49;--line:#2c405f;--txt:#eef2f7;--dim:#8b9cb5;--dimmer:#5d7a9c;
+  --red:#e0483d;--grn:#2fa36a;--amb:#d99a2b;--blu:#3d8fd1;}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0}
+body{background:var(--bg);color:var(--txt);font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;
+  -webkit-font-smoothing:antialiased;padding:12px 11px 50px;font-size:15px}
+.wrap{max-width:640px;margin:0 auto}
+h1{font-family:'Barlow Condensed',sans-serif;font-size:24px;font-weight:700;margin:2px 0 4px}
+.card{background:var(--surf);border:1px solid var(--line);border-radius:10px;padding:13px;margin-bottom:11px}
+.lab{font-family:'Barlow Condensed',sans-serif;font-size:12.5px;font-weight:700;letter-spacing:.16em;
+  text-transform:uppercase;color:var(--dim);margin:0 0 9px}
+select,input{width:100%;background:var(--bg);border:1px solid var(--line);border-radius:7px;
+  color:var(--txt);padding:9px 10px;font-size:14px;font-family:inherit}
+.syncbar{display:flex;align-items:center;gap:8px;font-size:11.5px;color:var(--dim);margin-bottom:11px}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--dimmer)}
+.dot.ok{background:var(--grn)} .dot.err{background:var(--red)} .dot.busy{background:var(--amb)}
+.sgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin-bottom:4px}
+.sbox{background:var(--surf2);border:1px solid var(--line);border-radius:8px;padding:9px 6px;text-align:center}
+.sbox .v{font-family:'JetBrains Mono',monospace;font-size:19px;font-weight:700;line-height:1}
+.sbox .k{font-size:9px;color:var(--dim);letter-spacing:.08em;text-transform:uppercase;margin-top:4px}
+table{width:100%;border-collapse:collapse;font-size:12.5px}
+th{font-size:9.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--dim);font-weight:600;
+  text-align:right;padding:0 5px 7px;border-bottom:1px solid var(--line)}
+th:first-child,th:nth-child(2){text-align:left}
+td{padding:7px 5px;border-bottom:1px solid #22314b;text-align:right;font-family:'JetBrains Mono',monospace;font-size:12.5px}
+td:first-child,td:nth-child(2){text-align:left;font-family:inherit}
+td.pcode{font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:15px}
+.empty{color:var(--dim);font-size:13px;text-align:center;padding:18px 8px}
+.chartwrap{position:relative;height:220px;margin-top:6px}
+.pill{display:inline-block;background:var(--surf2);border:1px solid var(--line);border-radius:20px;
+  padding:2px 9px;font-size:11px;color:var(--dim);margin-right:4px;margin-bottom:4px}
+.tabs{display:flex;gap:6px;margin-bottom:12px}
+.tabs button{flex:1;background:var(--surf2);border:1px solid var(--line);color:var(--dim);border-radius:8px;
+  padding:10px 6px;font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:700;cursor:pointer}
+.tabs button.on{background:var(--blu);border-color:var(--blu);color:#fff}
+.tab{display:none}.tab.on{display:block}
+.outrow{display:flex;align-items:center;gap:8px;background:var(--surf2);border:1px solid var(--line);
+  border-radius:8px;padding:9px 10px;margin-bottom:6px}
+.outrow .ot{font-weight:600;font-size:14px}
+.outrow .om{font-size:11.5px;color:var(--dim)}
+</style>
+</head>
+<body>
+<div class="wrap">
+<h1>Player Profile</h1>
+
+<!-- ============ FILL THESE TWO IN — same values as CHART.html ============ -->
+<script>
+const SUPABASE_URL = "https://uaidpyxlbwjcgqzllthv.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVhaWRweXhsYndqY2dxemxsdGh2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODgwMTkxMTEsImV4cCI6MjEwMzU5NTExMX0.B5p0INifmDkz0bI9PUfCQscqmXyr2pnUdf2HipTbTXM";
+</script>
+<!-- ======================================================================= -->
+
+<div class="syncbar"><span class="dot" id="syncDot"></span><span id="syncMsg">Connecting…</span></div>
+
+<div class="card">
+  <p class="lab">Pitcher</p>
+  <select id="pitcherPicker" onchange="onPitcherChange()"></select>
+</div>
+
+<div class="tabs">
+  <button class="on" onclick="showTab('outings')">Outings</button>
+  <button onclick="showTab('profile')">Profile</button>
+</div>
+
+<div class="tab on" id="tab-outings">
+  <div class="card">
+    <p class="lab">Select outing</p>
+    <select id="outingPicker" onchange="renderOuting()"></select>
+  </div>
+  <div id="outingBody"><p class="empty">Pick a pitcher to see their outings.</p></div>
+</div>
+
+<div class="tab" id="tab-profile">
+  <div id="profileBody"><p class="empty">Pick a pitcher to see their profile.</p></div>
+</div>
+
+</div>
+
+<script>
+let sb = null;
+let pitchers = [], outings = [], CACHE = {}; // outingId -> pitches
+let currentPitcherId = null;
+
+function setSync(state, msg){
+  document.getElementById("syncDot").className = "dot"+(state?" "+state:"");
+  document.getElementById("syncMsg").textContent = msg;
+}
+function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+async function init(){
+  if(SUPABASE_URL.startsWith("PASTE_") || SUPABASE_ANON_KEY.startsWith("PASTE_")){
+    setSync("err","Supabase not configured — edit SUPABASE_URL / SUPABASE_ANON_KEY at the top of this file.");
+    return;
+  }
+  try{
+    sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    const { data, error } = await sb.from("pitchers").select("*").order("name");
+    if(error) throw error;
+    pitchers = data || [];
+    setSync("ok","Connected");
+    document.getElementById("pitcherPicker").innerHTML =
+      '<option value="">— select a pitcher —</option>' +
+      pitchers.map(p=>`<option value="${p.id}">${esc(p.name)}</option>`).join("");
+  }catch(e){ setSync("err","Connection failed: "+(e.message||e)); }
+}
+
+async function onPitcherChange(){
+  currentPitcherId = document.getElementById("pitcherPicker").value;
+  if(!currentPitcherId){ outings=[]; renderOutingPicker(); return; }
+  setSync("busy","Loading outings…");
+  const { data, error } = await sb.from("outings").select("*").eq("pitcher_id", currentPitcherId).order("date", {ascending:false});
+  if(error){ setSync("err","Load failed: "+error.message); return; }
+  outings = data || [];
+  CACHE = {};
+  for(const o of outings){
+    const { data: pitches, error: pErr } = await sb.from("pitches").select("*").eq("outing_id", o.id).order("seq");
+    if(!pErr) CACHE[o.id] = pitches || [];
+  }
+  setSync("ok","Loaded "+outings.length+" outing(s)");
+  renderOutingPicker();
+  renderOuting();
+  renderProfile();
+}
+
+function renderOutingPicker(){
+  const sel = document.getElementById("outingPicker");
+  sel.innerHTML = outings.map(o=>`<option value="${o.id}">${o.date} vs ${esc(o.opponent||"")}</option>`).join("");
+}
+
+function showTab(name){
+  document.querySelectorAll(".tab").forEach(t=>t.classList.remove("on"));
+  document.querySelectorAll(".tabs button").forEach(b=>b.classList.remove("on"));
+  document.getElementById("tab-"+name).classList.add("on");
+  event.target.classList.add("on");
+  if(name==="profile") renderProfile();
+}
+
+/* ---------- PA reconstruction (mirrors CHART.html's live-count logic) ---------- */
+function buildPAs(rows){
+  const pas = [];
+  let current = null, b=0, s=0;
+  rows.forEach(r=>{
+    const p = {pitch:r.pitch, res:r.result, zone:r.zone, velo:r.velo, batter:r.batter, hand:r.hand, bip:r.bip_type, bipRes:r.bip_result};
+    if(current && p.batter !== current.batter){ current.outcome="incomplete"; pas.push(current); current=null; }
+    if(!current){ current = {batter:p.batter, hand:p.hand, pitches:[]}; b=0; s=0; }
+    p._bBefore=b; p._sBefore=s;
+    if(p.res==="Ball") b++;
+    else if(p.res==="Called"||p.res==="Whiff") s++;
+    else if(p.res==="Foul" && s<2) s++;
+    p._bAfter=b; p._sAfter=s;
+    current.pitches.push(p);
+    const terminal = p.res==="InPlay"||p.res==="HBP"||s>=3||b>=4;
+    if(terminal){ current.outcome = paOutcome(p,s,b); pas.push(current); current=null; }
+  });
+  if(current){ current.outcome="incomplete"; pas.push(current); }
+  return pas;
+}
+function paOutcome(last, s, b){
+  if(last.res==="InPlay") return last.bipRes || "InPlay";
+  if(last.res==="HBP") return "HBP";
+  if(s>=3) return last.res==="Whiff" ? "K (swinging)" : "K (looking)";
+  if(b>=4) return "BB";
+  return "incomplete";
+}
+function isOutOutcome(o){ return o==="Out" || o==="DP" || o==="K (swinging)" || o==="K (looking)"; }
+
+/* ---------- outing report ---------- */
+function renderOuting(){
+  const body = document.getElementById("outingBody");
+  if(!outings.length){ body.innerHTML = '<p class="empty">No outings for this pitcher yet.</p>'; return; }
+  const oid = document.getElementById("outingPicker").value || outings[0].id;
+  const rows = CACHE[oid];
+  if(!rows){ body.innerHTML = '<p class="empty">Loading…</p>'; return; }
+  const pas = buildPAs(rows);
+
+  const codes = [...new Set(rows.map(p=>p.pitch))];
+  const usage = codes.map(code=>{
+    const ps = rows.filter(p=>p.pitch===code);
+    const inZone = ps.filter(p=>p.zone>=1&&p.zone<=9).length;
+    const outZone = ps.filter(p=>p.zone>=11&&p.zone<=14).length;
+    const swings = ps.filter(p=>["Whiff","Foul","InPlay"].includes(p.result)).length;
+    const whiffs = ps.filter(p=>p.result==="Whiff").length;
+    const chaseSw = ps.filter(p=>p.zone>=11&&p.zone<=14&&["Whiff","Foul","InPlay"].includes(p.result)).length;
+    const velos = ps.map(p=>p.velo).filter(v=>v!=null);
+    const avgV = velos.length ? (velos.reduce((a,b)=>a+b,0)/velos.length) : null;
+    return {code, n:ps.length, zonePct: ps.length?Math.round(inZone/ps.length*100):0,
+      whiffPct: swings? Math.round(whiffs/swings*100):null,
+      chasePct: outZone? Math.round(chaseSw/outZone*100):null,
+      avgV: avgV!=null? avgV.toFixed(1):"—"};
+  }).sort((a,b)=>b.n-a.n);
+
+  const outPAs = pas.filter(pa=>isOutOutcome(pa.outcome));
+  const outByPitch = {};
+  outPAs.forEach(pa=>{ const last = pa.pitches[pa.pitches.length-1]; outByPitch[last.pitch]=(outByPitch[last.pitch]||0)+1; });
+  const outRows = Object.entries(outByPitch).sort((a,b)=>b[1]-a[1]);
+
+  const dpCount = pas.filter(pa=>pa.outcome==="DP").length;
+
+  const seq = {};
+  pas.forEach(pa=>{
+    for(let i=1;i<pa.pitches.length;i++){
+      const prev = pa.pitches[i-1].pitch, cur = pa.pitches[i];
+      const key = prev+" → "+cur.pitch;
+      if(!seq[key]) seq[key] = {n:0, whiff:0, foul:0, called:0, ball:0, inplay:0};
+      seq[key].n++;
+      if(cur.res==="Whiff") seq[key].whiff++;
+      else if(cur.res==="Foul") seq[key].foul++;
+      else if(cur.res==="Called") seq[key].called++;
+      else if(cur.res==="Ball") seq[key].ball++;
+      else if(cur.res==="InPlay") seq[key].inplay++;
+    }
+  });
+  const seqRows = Object.entries(seq).filter(([k,v])=>v.n>=2).sort((a,b)=>b[1].n-a[1].n).slice(0,10);
+
+  const outcomeTally = {};
+  pas.forEach(pa=>{ outcomeTally[pa.outcome]=(outcomeTally[pa.outcome]||0)+1; });
+
+  const totalPitches = rows.length;
+  const totalPAs = pas.filter(pa=>pa.outcome!=="incomplete").length;
+  const strikes = rows.filter(p=>["Called","Whiff","Foul","InPlay"].includes(p.result)).length;
+
+  body.innerHTML = `
+    <div class="card"><p class="lab">Snapshot</p>
+      <div class="sgrid">
+        <div class="sbox"><div class="v">${totalPitches}</div><div class="k">Pitches</div></div>
+        <div class="sbox"><div class="v">${totalPAs}</div><div class="k">PA faced</div></div>
+        <div class="sbox"><div class="v">${totalPitches?Math.round(strikes/totalPitches*100):0}%</div><div class="k">Strike %</div></div>
+        <div class="sbox"><div class="v">${dpCount}</div><div class="k">Double plays</div></div>
+      </div></div>
+    <div class="card"><p class="lab">Arsenal usage &amp; effectiveness</p>
+      <table><thead><tr><th>Pitch</th><th>N</th><th>Zone%</th><th>Whiff%</th><th>Chase%</th><th>Avg V</th></tr></thead>
+      <tbody>${usage.map(u=>`<tr><td class="pcode">${esc(u.code)}</td><td>${u.n}</td><td>${u.zonePct}%</td>
+        <td>${u.whiffPct==null?"—":u.whiffPct+"%"}</td><td>${u.chasePct==null?"—":u.chasePct+"%"}</td><td>${u.avgV}</td></tr>`).join("")}</tbody></table></div>
+    <div class="card"><p class="lab">Out creation — which pitch ended it</p>
+      ${outRows.length? `<table><thead><tr><th>Pitch</th><th>Outs/K</th></tr></thead>
+      <tbody>${outRows.map(([code,n])=>`<tr><td class="pcode">${esc(code)}</td><td>${n}</td></tr>`).join("")}</tbody></table>`
+      : '<p class="empty">No completed outs logged yet this outing.</p>'}</div>
+    <div class="card"><p class="lab">Top sequences (min. 2 uses)</p>
+      ${seqRows.length? `<table><thead><tr><th>Sequence</th><th>N</th><th>Whiff%</th><th>Foul%</th><th>In play</th></tr></thead>
+      <tbody>${seqRows.map(([k,v])=>`<tr><td>${esc(k)}</td><td>${v.n}</td>
+        <td>${Math.round(v.whiff/v.n*100)}%</td><td>${Math.round(v.foul/v.n*100)}%</td><td>${v.inplay}</td></tr>`).join("")}</tbody></table>`
+      : '<p class="empty">Not enough multi-pitch PAs yet to show sequences.</p>'}</div>
+    <div class="card"><p class="lab">PA outcomes</p>
+      ${Object.entries(outcomeTally).map(([k,v])=>`<span class="pill">${esc(k)}: ${v}</span>`).join("")}</div>
+  `;
+}
+
+/* ---------- career profile ---------- */
+let trendChart = null;
+function renderProfile(){
+  const body = document.getElementById("profileBody");
+  if(!outings.length){ body.innerHTML = '<p class="empty">No outings for this pitcher yet.</p>'; return; }
+
+  const outingsSorted = [...outings].sort((a,b)=> a.date<b.date?-1:1);
+  let allPAs = [];
+  outingsSorted.forEach(o=> allPAs = allPAs.concat(buildPAs(CACHE[o.id]||[])));
+  const allRows = [];
+  outingsSorted.forEach(o=> (CACHE[o.id]||[]).forEach(r=>allRows.push(r)));
+
+  const codes = [...new Set(allRows.map(p=>p.pitch))];
+  const totalPitches = allRows.length;
+  const usage = codes.map(code=>{
+    const ps = allRows.filter(p=>p.pitch===code);
+    return {code, n:ps.length, pct: Math.round(ps.length/totalPitches*100)};
+  }).sort((a,b)=>b.n-a.n);
+
+  const outPAs = allPAs.filter(pa=>isOutOutcome(pa.outcome));
+  const outByPitch = {};
+  outPAs.forEach(pa=>{ const last = pa.pitches[pa.pitches.length-1]; outByPitch[last.pitch]=(outByPitch[last.pitch]||0)+1; });
+  const topOutPitch = Object.entries(outByPitch).sort((a,b)=>b[1]-a[1])[0];
+  const dpCount = allPAs.filter(pa=>pa.outcome==="DP").length;
+
+  // put-away rate computed directly from PA pitch objects (which carry _sBefore)
+  const paPitches = [];
+  allPAs.forEach(pa=>pa.pitches.forEach(p=>paPitches.push(p)));
+  const twoStrikePitches = paPitches.filter(p=>p._sBefore===2);
+  const putAway = codes.map(code=>{
+    const ps = twoStrikePitches.filter(p=>p.pitch===code);
+    const wh = ps.filter(p=>p.res==="Whiff").length;
+    return {code, n:ps.length, pct: ps.length? Math.round(wh/ps.length*100):null};
+  }).filter(r=>r.n>0).sort((a,b)=>b.pct-a.pct);
+
+  const seq = {};
+  allPAs.forEach(pa=>{
+    for(let i=1;i<pa.pitches.length;i++){
+      const prev = pa.pitches[i-1].pitch, cur = pa.pitches[i];
+      const key = prev+" → "+cur.pitch;
+      if(!seq[key]) seq[key] = {n:0, whiff:0};
+      seq[key].n++;
+      if(cur.res==="Whiff") seq[key].whiff++;
+    }
+  });
+  const bestSeq = Object.entries(seq).filter(([k,v])=>v.n>=4)
+    .sort((a,b)=> (b[1].whiff/b[1].n)-(a[1].whiff/a[1].n)).slice(0,6);
+
+  body.innerHTML = `
+    <div class="card"><p class="lab">Career snapshot</p>
+      <div class="sgrid">
+        <div class="sbox"><div class="v">${outings.length}</div><div class="k">Outings</div></div>
+        <div class="sbox"><div class="v">${totalPitches}</div><div class="k">Pitches</div></div>
+        <div class="sbox"><div class="v">${topOutPitch?esc(topOutPitch[0]):"—"}</div><div class="k">Top out pitch</div></div>
+        <div class="sbox"><div class="v">${dpCount}</div><div class="k">Career DPs</div></div>
+      </div></div>
+    <div class="card"><p class="lab">Arsenal mix (career)</p>
+      <table><thead><tr><th>Pitch</th><th>N</th><th>%</th></tr></thead>
+      <tbody>${usage.map(u=>`<tr><td class="pcode">${esc(u.code)}</td><td>${u.n}</td><td>${u.pct}%</td></tr>`).join("")}</tbody></table></div>
+    <div class="card"><p class="lab">Put-away rate (2-strike whiff%)</p>
+      ${putAway.length? `<table><thead><tr><th>Pitch</th><th>N</th><th>Whiff%</th></tr></thead>
+      <tbody>${putAway.map(u=>`<tr><td class="pcode">${esc(u.code)}</td><td>${u.n}</td><td>${u.pct==null?"—":u.pct+"%"}</td></tr>`).join("")}</tbody></table>`
+      :'<p class="empty">No 2-strike pitches logged yet.</p>'}</div>
+    <div class="card"><p class="lab">Whiff% trend by outing</p>
+      <select id="trendPitch" onchange="drawTrend()">${codes.map(c=>`<option value="${esc(c)}">${esc(c)}</option>`).join("")}</select>
+      <div class="chartwrap"><canvas id="trendCanvas"></canvas></div></div>
+    <div class="card"><p class="lab">Best sequences (min. 4 uses, by whiff%)</p>
+      ${bestSeq.length? `<table><thead><tr><th>Sequence</th><th>N</th><th>Whiff%</th></tr></thead>
+      <tbody>${bestSeq.map(([k,v])=>`<tr><td>${esc(k)}</td><td>${v.n}</td><td>${Math.round(v.whiff/v.n*100)}%</td></tr>`).join("")}</tbody></table>`
+      : '<p class="empty">Not enough repeated sequences yet.</p>'}</div>
+  `;
+  drawTrend();
+}
+function drawTrend(){
+  const sel = document.getElementById("trendPitch");
+  if(!sel) return;
+  const code = sel.value;
+  const outingsSorted = [...outings].sort((a,b)=> a.date<b.date?-1:1);
+  const labels = [], data = [];
+  outingsSorted.forEach(o=>{
+    const ps = (CACHE[o.id]||[]).filter(p=>p.pitch===code);
+    const sw = ps.filter(p=>["Whiff","Foul","InPlay"].includes(p.result)).length;
+    const wh = ps.filter(p=>p.result==="Whiff").length;
+    if(ps.length){ labels.push(o.date); data.push(sw? Math.round(wh/sw*100):0); }
+  });
+  const ctx = document.getElementById("trendCanvas");
+  if(trendChart) trendChart.destroy();
+  if(!ctx || !window.Chart) return;
+  trendChart = new Chart(ctx, {
+    type:'line',
+    data:{ labels, datasets:[{ label: code+" whiff%", data, borderColor:'#3d8fd1', backgroundColor:'rgba(61,143,209,.15)',
+      tension:.25, fill:true, pointRadius:3 }] },
+    options:{ responsive:true, maintainAspectRatio:false,
+      scales:{ y:{ beginAtZero:true, max:100, ticks:{color:'#8b9cb5'}, grid:{color:'#2c405f'} },
+               x:{ ticks:{color:'#8b9cb5'}, grid:{color:'#22314b'} } },
+      plugins:{ legend:{ labels:{ color:'#eef2f7' } } } }
+  });
+}
+
+init();
+</script>
+</body>
+</html>
