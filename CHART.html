@@ -292,7 +292,7 @@ async function initSupabase(){
   }
   try{
     sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-    const { error } = await sb.from("pitchers").select("id").limit(1);
+    const { error } = await sb.rpc("list_pitchers");
     if(error) throw error;
     setSync("ok", "Connected");
     return true;
@@ -303,7 +303,7 @@ async function initSupabase(){
 }
 
 async function loadPitchers(){
-  const { data, error } = await sb.from("pitchers").select("*").order("name");
+  const { data, error } = await sb.rpc("list_pitchers");
   if(error){ setSync("err", "Couldn't load pitchers: "+error.message); return; }
   pitchers = data || [];
   const sel = document.getElementById("fPidSelect");
@@ -320,10 +320,11 @@ async function getOrCreatePitcher(){
   const newName = document.getElementById("fPidNew").value.trim();
   const selId = document.getElementById("fPidSelect").value;
   if(newName){
-    const { data, error } = await sb.from("pitchers").insert({name:newName, level:v("fLevel")}).select().single();
+    const { data, error } = await sb.rpc("create_pitcher", {p_name:newName, p_level:v("fLevel")});
     if(error){ setSync("err","Couldn't create pitcher: "+error.message); return null; }
-    pitchers.push(data);
-    return data;
+    const created = data[0];
+    pitchers.push(created);
+    return created;
   }
   if(selId) return pitchers.find(p=>p.id===selId);
   return null;
@@ -349,17 +350,18 @@ async function applySetup(){
   });
 
   // find or create the outing row
-  let { data: existing, error: findErr } = await sb.from("outings").select("*").eq("game_id", S.gid).maybeSingle();
+  let { data: foundRows, error: findErr } = await sb.rpc("find_outing", {p_game_id: S.gid});
   if(findErr){ setSync("err","Lookup failed: "+findErr.message); return; }
+  const existing = foundRows && foundRows[0];
   if(existing){
     S.outingId = existing.id;
     await resumeFromServer();
   } else {
-    const { data: created, error: createErr } = await sb.from("outings").insert({
-      pitcher_id: S.pitcherId, date: S.date, opponent: S.opp, level: S.level, season: S.season, game_id: S.gid
-    }).select().single();
+    const { data: createdRows, error: createErr } = await sb.rpc("create_outing", {
+      p_pitcher_id: S.pitcherId, p_date: S.date, p_opponent: S.opp, p_level: S.level, p_season: S.season, p_game_id: S.gid
+    });
     if(createErr){ setSync("err","Couldn't create outing: "+createErr.message); return; }
-    S.outingId = created.id;
+    S.outingId = createdRows[0].id;
     S.pitches = []; S.order = 0; S.inning = 1;
   }
   document.getElementById("setup").open = false;
@@ -368,7 +370,7 @@ async function applySetup(){
   render();
 }
 async function resumeFromServer(){
-  const { data, error } = await sb.from("pitches").select("*").eq("outing_id", S.outingId).order("seq");
+  const { data, error } = await sb.rpc("get_outing_pitches", {p_outing_id: S.outingId});
   if(error){ setSync("err","Couldn't resume: "+error.message); return; }
   S.pitches = []; S.order = 0;
   let lastBatter = null, idx = -1;
@@ -438,12 +440,12 @@ async function push(res, bip, bipRes, hard){
   render();
 
   setSync("busy","Saving…");
-  const { data, error } = await sb.from("pitches").insert({
-    outing_id: S.outingId, seq: p.seq, inning: p.inn, batter: p.batter, hand: p.hand,
-    pitch: p.pitch, velo: p.velo, zone: p.zone, result: p.res, bip_type: p.bip, bip_result: p.bipRes, hard: p.hard
-  }).select().single();
+  const { data, error } = await sb.rpc("insert_pitch", {
+    p_outing_id: S.outingId, p_seq: p.seq, p_inning: p.inn, p_batter: p.batter, p_hand: p.hand,
+    p_pitch: p.pitch, p_velo: p.velo, p_zone: p.zone, p_result: p.res, p_bip_type: p.bip, p_bip_result: p.bipRes, p_hard: p.hard
+  });
   if(error){ setSync("err","Save failed — pitch kept locally, will not resume across devices until fixed: "+error.message); return; }
-  p.dbId = data.id;
+  p.dbId = data[0].id;
   setSync("ok","Synced");
 }
 async function undo(){
@@ -453,7 +455,7 @@ async function undo(){
   render();
   if(last.dbId){
     setSync("busy","Removing…");
-    const { error } = await sb.from("pitches").delete().eq("id", last.dbId);
+    const { error } = await sb.rpc("delete_pitch", {p_id: last.dbId});
     if(error){ setSync("err","Undo sync failed: "+error.message); return; }
   }
   setSync("ok","Synced");
@@ -466,7 +468,7 @@ async function setHand(h){
   render();
   if(ids.length){
     setSync("busy","Saving…");
-    const { error } = await sb.from("pitches").update({hand:S.hands[b]}).in("id", ids);
+    const { error } = await sb.rpc("update_pitch_hands", {p_ids: ids, p_hand: S.hands[b]});
     if(error){ setSync("err","Hand update failed: "+error.message); return; }
   }
   setSync("ok","Synced");

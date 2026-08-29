@@ -109,48 +109,33 @@ const SUPABASE_URL = "https://uaidpyxlbwjcgqzllthv.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVhaWRweXhsYndqY2dxemxsdGh2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODgwMTkxMTEsImV4cCI6MjEwMzU5NTExMX0.B5p0INifmDkz0bI9PUfCQscqmXyr2pnUdf2HipTbTXM";
 </script>
 
-<div class="pick" id="pickBar">
-  <div class="row">
-    <div>
-      <label>Pitcher</label>
-      <select id="pitcherSelect"></select>
-    </div>
-    <div style="flex:0 0 auto">
-      <button onclick="loadFromPicker()">Generate report</button>
-    </div>
-  </div>
-</div>
-
 <div class="printbar" id="printBar" style="display:none">
   <button onclick="window.print()">Print / Save as PDF</button>
 </div>
 
 <div class="wrap" id="report">
-  <div class="empty">Pick a pitcher above to generate their report.</div>
+  <div class="empty">This report link is invalid or missing. Ask your coach for the correct link.</div>
 </div>
 
 <script>
 let sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-let pitchers = [];
 
 function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 function qparam(name){ return new URLSearchParams(location.search).get(name); }
 
 async function boot(){
-  const { data } = await sb.from("pitchers").select("*").order("name");
-  pitchers = data || [];
-  const sel = document.getElementById("pitcherSelect");
-  sel.innerHTML = pitchers.map(p=>`<option value="${p.id}">${esc(p.name)}</option>`).join("");
-
-  const wantName = qparam("pitcher");
-  if(wantName){
-    const match = pitchers.find(p=>p.name.toLowerCase()===wantName.toLowerCase());
-    if(match){ sel.value = match.id; await buildReport(match.id); return; }
+  const token = qparam("token");
+  if(!token){
+    document.getElementById("report").innerHTML = '<div class="empty">This report link is invalid or missing. Ask your coach for the correct link.</div>';
+    return;
   }
-}
-function loadFromPicker(){
-  const id = document.getElementById("pitcherSelect").value;
-  if(id) buildReport(id);
+  document.getElementById("report").innerHTML = '<div class="empty">Loading…</div>';
+  const { data, error } = await sb.rpc("get_report", {p_token: token});
+  if(error || !data){
+    document.getElementById("report").innerHTML = '<div class="empty">This report link is invalid or has expired. Ask your coach for the correct link.</div>';
+    return;
+  }
+  buildReportFromPayload(data);
 }
 
 /* ---- PA reconstruction, same rules as the charting tool ---- */
@@ -182,19 +167,14 @@ function paOutcome(last, s, b){
 function isOutOutcome(o){ return o==="Out" || o==="DP" || o==="K (swinging)" || o==="K (looking)"; }
 
 let trendChart = null;
-async function buildReport(pitcherId){
-  document.getElementById("report").innerHTML = '<div class="empty">Loading…</div>';
-  const pitcher = pitchers.find(p=>p.id===pitcherId);
-  const { data: outings } = await sb.from("outings").select("*").eq("pitcher_id", pitcherId).order("date");
-  if(!outings || !outings.length){
+function buildReportFromPayload(payload){
+  const pitcher = payload.pitcher;
+  const outings = (payload.outings || []).slice().sort((a,b)=> a.date<b.date?-1:1);
+  if(!outings.length){
     document.getElementById("report").innerHTML = '<div class="empty">No outings logged for this pitcher yet.</div>';
     return;
   }
-  const CACHE = {};
-  for(const o of outings){
-    const { data: rows } = await sb.from("pitches").select("*").eq("outing_id", o.id).order("seq");
-    CACHE[o.id] = rows || [];
-  }
+  const CACHE = payload.pitches || {}; // outing_id -> pitches[]
 
   let allPAs = [];
   outings.forEach(o=> allPAs = allPAs.concat(buildPAs(CACHE[o.id]||[])));
@@ -294,7 +274,7 @@ async function buildReport(pitcherId){
 
     <div class="section">
       <h2>Whiff% trend</h2>
-      <select id="trendPitch" onchange="drawTrend('${pitcherId}', ${JSON.stringify(outings.map(o=>o.id))}, ${JSON.stringify(codes)})" style="max-width:160px;padding:8px;border:1px solid #8a6a1f;border-radius:6px;font-family:'JetBrains Mono',monospace;background:#f4ead4;color:#241812">
+      <select id="trendPitch" onchange="drawTrend()" style="max-width:160px;padding:8px;border:1px solid #8a6a1f;border-radius:6px;font-family:'JetBrains Mono',monospace;background:#f4ead4;color:#241812">
         ${codes.map(c=>`<option value="${esc(c)}">${esc(c)}</option>`).join("")}
       </select>
       <div class="chartwrap"><canvas id="trendCanvas"></canvas></div>
@@ -305,14 +285,14 @@ async function buildReport(pitcherId){
 
   window._REPORT_CACHE = CACHE;
   window._REPORT_OUTINGS = outings;
-  drawTrend(pitcherId, outings.map(o=>o.id), codes);
+  drawTrend();
   document.getElementById("printBar").style.display = "flex";
 }
 
-function drawTrend(pitcherId, outingIds, codes){
+function drawTrend(){
   const sel = document.getElementById("trendPitch");
   if(!sel) return;
-  const code = sel.value || codes[0];
+  const code = sel.value;
   const outings = window._REPORT_OUTINGS, CACHE = window._REPORT_CACHE;
   const labels = [], data = [];
   outings.forEach(o=>{

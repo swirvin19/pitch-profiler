@@ -68,6 +68,7 @@ const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 <div class="card">
   <p class="lab">Pitcher</p>
   <select id="pitcherPicker" onchange="onPitcherChange()"></select>
+  <div id="shareLinkBox" style="margin-top:10px"></div>
 </div>
 
 <div class="tabs">
@@ -107,7 +108,7 @@ async function init(){
   }
   try{
     sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-    const { data, error } = await sb.from("pitchers").select("*").order("name");
+    const { data, error } = await sb.rpc("list_pitchers");
     if(error) throw error;
     pitchers = data || [];
     setSync("ok","Connected");
@@ -117,22 +118,38 @@ async function init(){
   }catch(e){ setSync("err","Connection failed: "+(e.message||e)); }
 }
 
+function renderShareLink(){
+  const box = document.getElementById("shareLinkBox");
+  if(!box) return;
+  const p = pitchers.find(x=>x.id===currentPitcherId);
+  if(!p || !p.share_token){ box.innerHTML = ""; return; }
+  const base = location.href.replace(/PROFILE\.html.*$/i, "");
+  const link = base + "REPORT.html?token=" + p.share_token;
+  box.innerHTML = `
+    <label style="font-size:11px;color:#8b9cb5;text-transform:uppercase;letter-spacing:.06em;font-weight:600">
+      Client report link — send only this pitcher this exact link
+    </label>
+    <input readonly value="${esc(link)}" onclick="this.select()" style="margin-top:5px;font-family:'JetBrains Mono',monospace;font-size:11.5px">
+  `;
+}
+
 async function onPitcherChange(){
   currentPitcherId = document.getElementById("pitcherPicker").value;
-  if(!currentPitcherId){ outings=[]; renderOutingPicker(); return; }
+  if(!currentPitcherId){ outings=[]; renderOutingPicker(); renderShareLink(); return; }
   setSync("busy","Loading outings…");
-  const { data, error } = await sb.from("outings").select("*").eq("pitcher_id", currentPitcherId).order("date", {ascending:false});
+  const { data, error } = await sb.rpc("get_pitcher_outings", {p_pitcher_id: currentPitcherId});
   if(error){ setSync("err","Load failed: "+error.message); return; }
-  outings = data || [];
+  outings = (data || []).slice().sort((a,b)=> a.date<b.date?1:-1);
   CACHE = {};
   for(const o of outings){
-    const { data: pitches, error: pErr } = await sb.from("pitches").select("*").eq("outing_id", o.id).order("seq");
+    const { data: pitches, error: pErr } = await sb.rpc("get_outing_pitches", {p_outing_id: o.id});
     if(!pErr) CACHE[o.id] = pitches || [];
   }
   setSync("ok","Loaded "+outings.length+" outing(s)");
   renderOutingPicker();
   renderOuting();
   renderProfile();
+  renderShareLink();
 }
 
 function renderOutingPicker(){
