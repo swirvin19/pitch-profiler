@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>Pitcher Report</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Rye&family=Bebas+Neue&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
+<style>
+:root{
+  --bg:#120b07; --leather:#241811; --leather2:#2e1f15; --paper:#f4ead4; --ink:#241812; --sub:#7a6a52;
+  --line:#c9a86a55; --brass:#c9a227; --brass2:#8a6a1f; --rust:#8a3324; --iron:#3a3128;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:
+    radial-gradient(ellipse at 50% -10%, #2a1c12 0%, #120b07 60%),
+    repeating-linear-gradient(135deg, rgba(0,0,0,.15) 0 2px, transparent 2px 6px);
+  color:var(--paper);font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;
+  padding:22px 14px 60px}
+.wrap{max-width:760px;margin:0 auto;background:var(--paper);border-radius:6px;overflow:hidden;
+  box-shadow:0 24px 70px rgba(0,0,0,.55), 0 0 0 2px var(--brass2), 0 0 0 6px #120b07;
+  position:relative;color:var(--ink)}
+.wrap::before,.wrap::after{content:"";position:absolute;width:9px;height:9px;border-radius:50%;
+  background:radial-gradient(circle at 35% 30%, #e8cd7a, #8a6a1f 70%);
+  box-shadow:0 1px 2px rgba(0,0,0,.6);top:10px;z-index:5}
+.wrap::before{left:10px}
+.wrap::after{right:10px}
+.foot{position:relative}
+.foot::before,.foot::after{content:"";position:absolute;width:9px;height:9px;border-radius:50%;
+  background:radial-gradient(circle at 35% 30%, #e8cd7a, #8a6a1f 70%);
+  box-shadow:0 1px 2px rgba(0,0,0,.6);bottom:10px}
+.foot::before{left:10px}
+.foot::after{right:10px}
+
+.pick{max-width:760px;margin:0 auto 16px;background:var(--leather);border:1px solid var(--brass2);border-radius:8px;padding:14px}
+.pick select,.pick input{width:100%;background:#1a120b;border:1px solid var(--brass2);border-radius:6px;color:var(--paper);
+  padding:9px 10px;font-size:14px;font-family:inherit;margin-top:6px}
+.pick label{font-size:11px;color:#b8a988;text-transform:uppercase;letter-spacing:.1em;font-weight:600;font-family:'Bebas Neue',sans-serif}
+.pick .row{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end}
+.pick .row > div{flex:1;min-width:160px}
+.pick button{margin-top:10px;background:linear-gradient(180deg,#c9a227,#8a6a1f);border:1px solid #6b5117;color:#1a1206;
+  font-weight:700;border-radius:6px;padding:10px 16px;cursor:pointer;font-size:13.5px;letter-spacing:.04em;
+  font-family:'Bebas Neue',sans-serif;text-transform:uppercase}
+
+.head{background:
+    radial-gradient(ellipse at 50% 0%, #3a2417 0%, #1c130d 75%);
+  color:var(--paper);padding:38px 30px 30px;text-align:center;position:relative;
+  border-bottom:3px double var(--brass2)}
+.head .kicker{font-family:'Bebas Neue',sans-serif;font-size:14px;letter-spacing:.42em;text-transform:uppercase;
+  color:var(--brass);font-weight:400}
+.head h1{font-family:'Rye',serif;font-size:42px;font-weight:400;margin:10px 0 6px;letter-spacing:.01em;
+  color:#f4ead4;text-shadow:0 2px 0 #000, 0 1px 0 #6b5117}
+.head .meta{font-size:13px;color:#c9b98f;font-family:'JetBrains Mono',monospace}
+.head .asof{margin-top:12px;font-size:10.5px;color:#8a7a5c;letter-spacing:.06em}
+
+.section{padding:26px 30px;border-bottom:1px solid var(--line);background:var(--paper)}
+.section:last-child{border-bottom:none}
+.section h2{font-family:'Bebas Neue',sans-serif;font-size:21px;font-weight:400;letter-spacing:.08em;
+  text-transform:uppercase;color:var(--rust);margin:0 0 16px;border-bottom:2px solid var(--brass);
+  display:inline-block;padding-bottom:4px}
+
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.kpi{background:radial-gradient(circle at 35% 30%, #ece0c4, #d8c69a 75%);
+  border:1px solid var(--brass2);border-radius:10px;padding:14px 8px;text-align:center;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.5), inset 0 -2px 3px rgba(0,0,0,.15)}
+.kpi .v{font-family:'Rye',serif;font-size:24px;font-weight:400;color:var(--ink)}
+.kpi .k{font-size:9.5px;color:var(--sub);text-transform:uppercase;letter-spacing:.08em;margin-top:4px;font-weight:600}
+
+table{width:100%;border-collapse:collapse;font-size:13.5px}
+th{font-family:'Bebas Neue',sans-serif;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--sub);font-weight:400;
+  text-align:right;padding:0 8px 8px;border-bottom:2px solid var(--iron)}
+th:first-child{text-align:left}
+td{padding:9px 8px;border-bottom:1px solid var(--line);text-align:right;font-family:'JetBrains Mono',monospace;font-size:13px}
+td:first-child{text-align:left;font-family:'Bebas Neue',sans-serif;font-weight:400;font-size:17px;letter-spacing:.02em;color:var(--rust)}
+
+.badgebar{display:flex;flex-wrap:wrap;gap:8px}
+.badge{background:linear-gradient(180deg,#3a2417,#241811);border:1px solid var(--brass2);color:var(--brass);
+  border-radius:4px;padding:7px 13px;font-size:12px;font-weight:600;font-family:'JetBrains Mono',monospace}
+
+.chartwrap{position:relative;height:220px;margin-top:4px}
+
+.note{font-size:12px;color:var(--sub);line-height:1.6;margin-top:10px}
+.foot{padding:16px 30px;font-size:10.5px;color:#c9b98f;text-align:center;background:#1c130d;
+  letter-spacing:.1em;text-transform:uppercase;font-family:'Bebas Neue',sans-serif}
+
+.printbar{max-width:760px;margin:0 auto 12px;display:flex;justify-content:flex-end}
+.printbar button{background:linear-gradient(180deg,#c9a227,#8a6a1f);border:1px solid #6b5117;color:#1a1206;border-radius:6px;padding:9px 16px;
+  font-size:13px;font-weight:700;cursor:pointer;font-family:'Bebas Neue',sans-serif;letter-spacing:.04em;text-transform:uppercase}
+
+.empty{text-align:center;color:var(--sub);padding:30px;font-size:14px;background:var(--paper)}
+
+@media print{
+  body{background:#fff;padding:0}
+  .pick,.printbar,.rivet{display:none}
+  .wrap{box-shadow:none;border-radius:0}
+  .head{background:#1c130d !important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+}
+</style>
+</head>
+<body>
+
+<script>
+const SUPABASE_URL = "https://uaidpyxlbwjcgqzllthv.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVhaWRweXhsYndqY2dxemxsdGh2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODgwMTkxMTEsImV4cCI6MjEwMzU5NTExMX0.B5p0INifmDkz0bI9PUfCQscqmXyr2pnUdf2HipTbTXM";
+</script>
+
+<div class="pick" id="pickBar">
+  <div class="row">
+    <div>
+      <label>Pitcher</label>
+      <select id="pitcherSelect"></select>
+    </div>
+    <div style="flex:0 0 auto">
+      <button onclick="loadFromPicker()">Generate report</button>
+    </div>
+  </div>
+</div>
+
+<div class="printbar" id="printBar" style="display:none">
+  <button onclick="window.print()">Print / Save as PDF</button>
+</div>
+
+<div class="wrap" id="report">
+  <div class="empty">Pick a pitcher above to generate their report.</div>
+</div>
+
+<script>
+let sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+let pitchers = [];
+
+function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function qparam(name){ return new URLSearchParams(location.search).get(name); }
+
+async function boot(){
+  const { data } = await sb.from("pitchers").select("*").order("name");
+  pitchers = data || [];
+  const sel = document.getElementById("pitcherSelect");
+  sel.innerHTML = pitchers.map(p=>`<option value="${p.id}">${esc(p.name)}</option>`).join("");
+
+  const wantName = qparam("pitcher");
+  if(wantName){
+    const match = pitchers.find(p=>p.name.toLowerCase()===wantName.toLowerCase());
+    if(match){ sel.value = match.id; await buildReport(match.id); return; }
+  }
+}
+function loadFromPicker(){
+  const id = document.getElementById("pitcherSelect").value;
+  if(id) buildReport(id);
+}
+
+/* ---- PA reconstruction, same rules as the charting tool ---- */
+function buildPAs(rows){
+  const pas = [];
+  let current = null, b=0, s=0;
+  rows.forEach(r=>{
+    const p = {pitch:r.pitch, res:r.result, zone:r.zone, velo:r.velo, batter:r.batter, bip:r.bip_type, bipRes:r.bip_result};
+    if(current && p.batter !== current.batter){ current.outcome="incomplete"; pas.push(current); current=null; }
+    if(!current){ current = {batter:p.batter, pitches:[]}; b=0; s=0; }
+    p._sBefore=s;
+    if(p.res==="Ball") b++;
+    else if(p.res==="Called"||p.res==="Whiff") s++;
+    else if(p.res==="Foul" && s<2) s++;
+    current.pitches.push(p);
+    const terminal = p.res==="InPlay"||p.res==="HBP"||s>=3||b>=4;
+    if(terminal){ current.outcome = paOutcome(p,s,b); pas.push(current); current=null; }
+  });
+  if(current){ current.outcome="incomplete"; pas.push(current); }
+  return pas;
+}
+function paOutcome(last, s, b){
+  if(last.res==="InPlay") return last.bipRes || "InPlay";
+  if(last.res==="HBP") return "HBP";
+  if(s>=3) return last.res==="Whiff" ? "K (swinging)" : "K (looking)";
+  if(b>=4) return "BB";
+  return "incomplete";
+}
+function isOutOutcome(o){ return o==="Out" || o==="DP" || o==="K (swinging)" || o==="K (looking)"; }
+
+let trendChart = null;
+async function buildReport(pitcherId){
+  document.getElementById("report").innerHTML = '<div class="empty">Loading…</div>';
+  const pitcher = pitchers.find(p=>p.id===pitcherId);
+  const { data: outings } = await sb.from("outings").select("*").eq("pitcher_id", pitcherId).order("date");
+  if(!outings || !outings.length){
+    document.getElementById("report").innerHTML = '<div class="empty">No outings logged for this pitcher yet.</div>';
+    return;
+  }
+  const CACHE = {};
+  for(const o of outings){
+    const { data: rows } = await sb.from("pitches").select("*").eq("outing_id", o.id).order("seq");
+    CACHE[o.id] = rows || [];
+  }
+
+  let allPAs = [];
+  outings.forEach(o=> allPAs = allPAs.concat(buildPAs(CACHE[o.id]||[])));
+  const allRows = [];
+  outings.forEach(o=> (CACHE[o.id]||[]).forEach(r=>allRows.push(r)));
+
+  const codes = [...new Set(allRows.map(p=>p.pitch))];
+  const totalPitches = allRows.length;
+  const strikes = allRows.filter(p=>["Called","Whiff","Foul","InPlay"].includes(p.result)).length;
+
+  const usage = codes.map(code=>{
+    const ps = allRows.filter(p=>p.pitch===code);
+    const inZone = ps.filter(p=>p.zone>=1&&p.zone<=9).length;
+    const outZone = ps.filter(p=>p.zone>=11&&p.zone<=14).length;
+    const swings = ps.filter(p=>["Whiff","Foul","InPlay"].includes(p.result)).length;
+    const whiffs = ps.filter(p=>p.result==="Whiff").length;
+    const chaseSw = ps.filter(p=>p.zone>=11&&p.zone<=14&&["Whiff","Foul","InPlay"].includes(p.result)).length;
+    const velos = ps.map(p=>p.velo).filter(v=>v!=null);
+    const avgV = velos.length ? (velos.reduce((a,b)=>a+b,0)/velos.length) : null;
+    return {code, n:ps.length, pct: Math.round(ps.length/totalPitches*100),
+      zonePct: ps.length?Math.round(inZone/ps.length*100):0,
+      whiffPct: swings? Math.round(whiffs/swings*100):null,
+      chasePct: outZone? Math.round(chaseSw/outZone*100):null,
+      avgV: avgV!=null? avgV.toFixed(1):"—"};
+  }).sort((a,b)=>b.n-a.n);
+
+  const outPAs = allPAs.filter(pa=>isOutOutcome(pa.outcome));
+  const outByPitch = {};
+  outPAs.forEach(pa=>{ const last = pa.pitches[pa.pitches.length-1]; outByPitch[last.pitch]=(outByPitch[last.pitch]||0)+1; });
+  const topOutPitch = Object.entries(outByPitch).sort((a,b)=>b[1]-a[1])[0];
+  const dpCount = allPAs.filter(pa=>pa.outcome==="DP").length;
+  const kCount = allPAs.filter(pa=>pa.outcome==="K (swinging)"||pa.outcome==="K (looking)").length;
+
+  const paPitches = [];
+  allPAs.forEach(pa=>pa.pitches.forEach(p=>paPitches.push(p)));
+  const twoStrikePitches = paPitches.filter(p=>p._sBefore===2);
+  const putAway = codes.map(code=>{
+    const ps = twoStrikePitches.filter(p=>p.pitch===code);
+    const wh = ps.filter(p=>p.res==="Whiff").length;
+    return {code, n:ps.length, pct: ps.length? Math.round(wh/ps.length*100):null};
+  }).filter(r=>r.n>0).sort((a,b)=>b.pct-a.pct);
+
+  const seq = {};
+  allPAs.forEach(pa=>{
+    for(let i=1;i<pa.pitches.length;i++){
+      const prev = pa.pitches[i-1].pitch, cur = pa.pitches[i];
+      const key = prev+" → "+cur.pitch;
+      if(!seq[key]) seq[key] = {n:0, whiff:0};
+      seq[key].n++;
+      if(cur.res==="Whiff") seq[key].whiff++;
+    }
+  });
+  const bestSeq = Object.entries(seq).filter(([k,v])=>v.n>=4)
+    .sort((a,b)=> (b[1].whiff/b[1].n)-(a[1].whiff/a[1].n)).slice(0,5);
+
+  const firstDate = outings[0].date, lastDate = outings[outings.length-1].date;
+  const level = outings[outings.length-1].level || pitcher.level || "";
+
+  document.getElementById("report").innerHTML = `
+    <div class="head">
+      <div class="kicker">Swirvin Analytics</div>
+      <h1>${esc(pitcher.name)}</h1>
+      <div class="meta">${esc(level)} · ${outings.length} outing${outings.length===1?"":"s"} tracked · ${esc(firstDate)} – ${esc(lastDate)}</div>
+      <div class="asof">Compiled ${new Date().toLocaleDateString(undefined,{year:'numeric',month:'long',day:'numeric'})}</div>
+    </div>
+
+    <div class="section">
+      <h2>Overview</h2>
+      <div class="kpis">
+        <div class="kpi"><div class="v">${totalPitches}</div><div class="k">Pitches logged</div></div>
+        <div class="kpi"><div class="v">${totalPitches?Math.round(strikes/totalPitches*100):0}%</div><div class="k">Strike rate</div></div>
+        <div class="kpi"><div class="v">${kCount}</div><div class="k">Strikeouts</div></div>
+        <div class="kpi"><div class="v">${dpCount}</div><div class="k">Double plays</div></div>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>Arsenal</h2>
+      <table><thead><tr><th>Pitch</th><th>Usage</th><th>Zone%</th><th>Whiff%</th><th>Chase%</th><th>Avg Velo</th></tr></thead>
+      <tbody>${usage.map(u=>`<tr><td>${esc(u.code)}</td><td>${u.pct}%</td><td>${u.zonePct}%</td>
+        <td>${u.whiffPct==null?"—":u.whiffPct+"%"}</td><td>${u.chasePct==null?"—":u.chasePct+"%"}</td><td>${u.avgV}</td></tr>`).join("")}</tbody></table>
+    </div>
+
+    <div class="section">
+      <h2>Put-away pitch (2-strike whiff rate)</h2>
+      ${putAway.length? `<table><thead><tr><th>Pitch</th><th>Thrown</th><th>Whiff%</th></tr></thead>
+      <tbody>${putAway.slice(0,5).map(u=>`<tr><td>${esc(u.code)}</td><td>${u.n}</td><td>${u.pct==null?"—":u.pct+"%"}</td></tr>`).join("")}</tbody></table>`
+      : '<p class="note">Not enough 2-strike data yet.</p>'}
+      ${topOutPitch?`<p class="note">Primary out pitch: <b>${esc(topOutPitch[0])}</b> (${topOutPitch[1]} outs/strikeouts finished with it).</p>`:""}
+    </div>
+
+    <div class="section">
+      <h2>Signature sequences</h2>
+      ${bestSeq.length? `<div class="badgebar">${bestSeq.map(([k,v])=>`<span class="badge">${esc(k)} · ${Math.round(v.whiff/v.n*100)}% whiff (n=${v.n})</span>`).join("")}</div>`
+      : '<p class="note">Not enough repeated sequences yet to surface a signature combo.</p>'}
+    </div>
+
+    <div class="section">
+      <h2>Whiff% trend</h2>
+      <select id="trendPitch" onchange="drawTrend('${pitcherId}', ${JSON.stringify(outings.map(o=>o.id))}, ${JSON.stringify(codes)})" style="max-width:160px;padding:8px;border:1px solid #8a6a1f;border-radius:6px;font-family:'JetBrains Mono',monospace;background:#f4ead4;color:#241812">
+        ${codes.map(c=>`<option value="${esc(c)}">${esc(c)}</option>`).join("")}
+      </select>
+      <div class="chartwrap"><canvas id="trendCanvas"></canvas></div>
+    </div>
+
+    <div class="foot">Compiled from self-charted video data · Swirvin Analytics · Private coaching report</div>
+  `;
+
+  window._REPORT_CACHE = CACHE;
+  window._REPORT_OUTINGS = outings;
+  drawTrend(pitcherId, outings.map(o=>o.id), codes);
+  document.getElementById("printBar").style.display = "flex";
+}
+
+function drawTrend(pitcherId, outingIds, codes){
+  const sel = document.getElementById("trendPitch");
+  if(!sel) return;
+  const code = sel.value || codes[0];
+  const outings = window._REPORT_OUTINGS, CACHE = window._REPORT_CACHE;
+  const labels = [], data = [];
+  outings.forEach(o=>{
+    const ps = (CACHE[o.id]||[]).filter(p=>p.pitch===code);
+    const sw = ps.filter(p=>["Whiff","Foul","InPlay"].includes(p.result)).length;
+    const wh = ps.filter(p=>p.result==="Whiff").length;
+    if(ps.length){ labels.push(o.date); data.push(sw? Math.round(wh/sw*100):0); }
+  });
+  const ctx = document.getElementById("trendCanvas");
+  if(trendChart) trendChart.destroy();
+  if(!ctx || !window.Chart) return;
+  trendChart = new Chart(ctx, {
+    type:'line',
+    data:{ labels, datasets:[{ label: code+" whiff%", data, borderColor:'#8a6a1f', backgroundColor:'rgba(201,162,39,.18)',
+      tension:.25, fill:true, pointRadius:3, pointBackgroundColor:'#8a3324' }] },
+    options:{ responsive:true, maintainAspectRatio:false,
+      scales:{ y:{ beginAtZero:true, max:100, ticks:{color:'#7a6a52'}, grid:{color:'#c9a86a33'} },
+               x:{ ticks:{color:'#7a6a52'}, grid:{color:'#c9a86a22'} } },
+      plugins:{ legend:{ display:false } } }
+  });
+}
+
+boot();
+</script>
+</body>
+</html>
