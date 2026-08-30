@@ -6,20 +6,20 @@
 <title>Player Profile</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
 <style>
-:root{--bg:#0f1826;--surf:#16233a;--surf2:#1e2e49;--line:#2c405f;--txt:#eef2f7;--dim:#8b9cb5;--dimmer:#5d7a9c;
-  --red:#e0483d;--grn:#2fa36a;--amb:#d99a2b;--blu:#3d8fd1;}
+:root{--bg:#09090b;--surf:#131316;--surf2:#1c1c21;--line:#2a2a30;--txt:#f5f4f2;--dim:#8c8a92;--dimmer:#56545c;
+  --red:#c81e3a;--grn:#2fd980;--amb:#ffc94d;--accent:#ff2140;}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;padding:0}
 body{background:var(--bg);color:var(--txt);font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;
   -webkit-font-smoothing:antialiased;padding:12px 11px 50px;font-size:15px}
 .wrap{max-width:640px;margin:0 auto}
-h1{font-family:'Barlow Condensed',sans-serif;font-size:24px;font-weight:700;margin:2px 0 4px}
+h1{font-family:'Chakra Petch',sans-serif;font-size:24px;font-weight:700;margin:2px 0 4px}
 .card{background:var(--surf);border:1px solid var(--line);border-radius:10px;padding:13px;margin-bottom:11px}
-.lab{font-family:'Barlow Condensed',sans-serif;font-size:12.5px;font-weight:700;letter-spacing:.16em;
+.lab{font-family:'Chakra Petch',sans-serif;font-size:12.5px;font-weight:700;letter-spacing:.16em;
   text-transform:uppercase;color:var(--dim);margin:0 0 9px}
 select,input{width:100%;background:var(--bg);border:1px solid var(--line);border-radius:7px;
   color:var(--txt);padding:9px 10px;font-size:14px;font-family:inherit}
@@ -34,18 +34,43 @@ table{width:100%;border-collapse:collapse;font-size:12.5px}
 th{font-size:9.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--dim);font-weight:600;
   text-align:right;padding:0 5px 7px;border-bottom:1px solid var(--line)}
 th:first-child,th:nth-child(2){text-align:left}
-td{padding:7px 5px;border-bottom:1px solid #22314b;text-align:right;font-family:'JetBrains Mono',monospace;font-size:12.5px}
+td{padding:7px 5px;border-bottom:1px solid #232327;text-align:right;font-family:'JetBrains Mono',monospace;font-size:12.5px}
 td:first-child,td:nth-child(2){text-align:left;font-family:inherit}
-td.pcode{font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:15px}
+td.pcode{font-family:'Chakra Petch',sans-serif;font-weight:700;font-size:15px}
 .empty{color:var(--dim);font-size:13px;text-align:center;padding:18px 8px}
 .chartwrap{position:relative;height:220px;margin-top:6px}
 .pill{display:inline-block;background:var(--surf2);border:1px solid var(--line);border-radius:20px;
   padding:2px 9px;font-size:11px;color:var(--dim);margin-right:4px;margin-bottom:4px}
-.tabs{display:flex;gap:6px;margin-bottom:12px}
-.tabs button{flex:1;background:var(--surf2);border:1px solid var(--line);color:var(--dim);border-radius:8px;
-  padding:10px 6px;font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:700;cursor:pointer}
-.tabs button.on{background:var(--blu);border-color:var(--blu);color:#fff}
+.tabs{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
+.tabs button{flex:1 1 30%;background:var(--surf2);border:1px solid var(--line);color:var(--dim);border-radius:8px;
+  padding:9px 5px;font-family:'Chakra Petch',sans-serif;font-size:13.5px;font-weight:700;cursor:pointer}
+.tabs button.on{background:var(--accent);border-color:var(--accent);color:#fff}
 .tab{display:none}.tab.on{display:block}
+.rtabs{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
+.rtabs button{flex:1 1 30%;background:var(--surf2);border:1px solid var(--line);color:var(--dim);border-radius:8px;
+  padding:9px 5px;font-family:'Chakra Petch',sans-serif;font-size:13.5px;font-weight:700;cursor:pointer}
+.rtabs button.on{background:var(--accent);border-color:var(--accent);color:#fff}
+.rtab{display:none}.rtab.on{display:block}
+.teamrow{display:flex;align-items:center;justify-content:space-between;background:var(--surf2);
+  border:1px solid var(--line);border-radius:8px;padding:10px 12px;margin-bottom:6px;cursor:pointer}
+.teamrow .tn{font-family:'Chakra Petch',sans-serif;font-size:17px;font-weight:700}
+.teamrow .tc{font-size:12px;color:var(--dim)}
+.hrow{display:flex;align-items:center;gap:8px;background:var(--surf2);border:1px solid var(--line);
+  border-radius:8px;padding:9px 10px;margin-bottom:6px}
+.hrow .hi{flex:1;min-width:0}
+.hrow .hn{font-weight:600;font-size:14px}
+.hrow .hm{font-size:11.5px;color:var(--dim)}
+.hrow .actions{display:flex;gap:4px;flex:0 0 auto}
+.lineuprow{display:flex;align-items:center;gap:8px;background:var(--surf2);border:1px solid var(--line);
+  border-radius:8px;padding:8px 10px;margin-bottom:6px}
+.lineuprow .ln{flex:1;font-weight:600;font-size:14px}
+.lineuprow .lh{font-size:11.5px;color:var(--dim);flex:0 0 auto}
+.lineuprow .larr{display:flex;gap:2px;flex:0 0 auto}
+.lineuprow button{padding:4px 8px;min-height:auto;font-size:12px}
+#lineupOut{height:140px;font-family:'JetBrains Mono',monospace;font-size:12.5px;margin-top:8px}
+button.danger{background:transparent;color:var(--red);border-color:var(--red)}
+button.sm{padding:6px 10px;font-size:12.5px;min-height:34px}
+button.ghost{background:transparent;color:var(--dim)}
 .outrow{display:flex;align-items:center;gap:8px;background:var(--surf2);border:1px solid var(--line);
   border-radius:8px;padding:9px 10px;margin-bottom:6px}
 .outrow .ot{font-weight:600;font-size:14px}
@@ -69,7 +94,7 @@ const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
   <p class="lab">Pitcher</p>
   <select id="pitcherPicker" onchange="onPitcherChange()"></select>
   <div id="shareLinkBox" style="margin-top:10px"></div>
-  <button id="deletePitcherBtn" onclick="deletePitcher()" style="margin-top:10px;width:100%;background:#341417;border-color:#e0483d;color:#f0a3a0;display:none">
+  <button id="deletePitcherBtn" onclick="deletePitcher()" style="margin-top:10px;width:100%;background:#2a0f14;border-color:#ff2140;color:#f0a3a0;display:none">
     Delete this pitcher &amp; all their data
   </button>
 </div>
@@ -79,6 +104,7 @@ const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
   <button onclick="showTab('profile')">Profile</button>
   <button onclick="showTab('hitters')">Hitters</button>
   <button onclick="showTab('plan')">Attack Plan</button>
+  <button onclick="showTab('rosters')">Rosters</button>
 </div>
 
 <div class="tab on" id="tab-outings">
@@ -103,6 +129,46 @@ const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 
 <div class="tab" id="tab-plan">
   <div id="planBody"><p class="empty">Pick a pitcher to see their attack plan.</p></div>
+</div>
+
+<div class="tab" id="tab-rosters">
+  <div class="card">
+    <p class="lab" id="rformTitle">Add / update hitter</p>
+    <div class="grid2">
+      <div class="field"><label><small>Name</small><input id="rfName" placeholder="Ramos"></label></div>
+      <div class="field"><label><small>Hand</small>
+        <select id="rfHand"><option value="">—</option><option value="L">L</option><option value="R">R</option><option value="S">S (switch)</option></select>
+      </label></div>
+    </div>
+    <div class="field"><label><small>Team</small><input id="rfTeam" placeholder="ABQ Isotopes" list="rteamList"><datalist id="rteamList"></datalist></label></div>
+    <div class="field"><label><small>Notes (optional)</small><input id="rfNotes" placeholder="Tendencies, last seen, etc."></label></div>
+    <div class="btnrow">
+      <button class="primary" onclick="saveHitter()" style="flex:1">Save hitter</button>
+      <button class="ghost sm" onclick="clearHitterForm()">Clear</button>
+    </div>
+    <p class="note">Saving a name that already exists (case-insensitive) updates that hitter instead of creating a duplicate — that's what makes a team change stick everywhere, no matter who enters it or from which device.</p>
+  </div>
+
+  <div class="rtabs">
+    <button class="on" onclick="showRosterTab('teams')">By Team</button>
+    <button onclick="showRosterTab('all')">All Hitters</button>
+    <button onclick="showRosterTab('lineup')">Lineup Builder</button>
+  </div>
+
+  <div class="rtab on" id="rtab-teams">
+    <div id="teamsList"><p class="empty">Loading…</p></div>
+    <div id="teamRosterBody"></div>
+  </div>
+  <div class="rtab" id="rtab-all">
+    <div id="allHittersList"><p class="empty">Loading…</p></div>
+  </div>
+  <div class="rtab" id="rtab-lineup">
+    <div class="card">
+      <p class="lab">Team</p>
+      <select id="lineupTeamPicker" onchange="loadLineupTeam()"></select>
+    </div>
+    <div id="lineupBuilderBody"><p class="empty">Pick a team to build a lineup.</p></div>
+  </div>
 </div>
 
 </div>
@@ -143,7 +209,7 @@ function renderShareLink(){
   const base = location.href.replace(/PROFILE\.html.*$/i, "");
   const link = base + "REPORT.html?token=" + p.share_token;
   box.innerHTML = `
-    <label style="font-size:11px;color:#8b9cb5;text-transform:uppercase;letter-spacing:.06em;font-weight:600">
+    <label style="font-size:11px;color:#8c8a92;text-transform:uppercase;letter-spacing:.06em;font-weight:600">
       Client report link — send only this pitcher this exact link
     </label>
     <input readonly value="${esc(link)}" onclick="this.select()" style="margin-top:5px;font-family:'JetBrains Mono',monospace;font-size:11.5px">
@@ -203,6 +269,161 @@ function showTab(name){
   if(name==="profile") renderProfile();
   if(name==="hitters") renderHitters();
   if(name==="plan") renderPlan();
+  if(name==="rosters") loadRosterData();
+}
+function showRosterTab(name){
+  document.querySelectorAll(".rtab").forEach(t=>t.classList.remove("on"));
+  document.querySelectorAll(".rtabs button").forEach(b=>b.classList.remove("on"));
+  document.getElementById("rtab-"+name).classList.add("on");
+  event.target.classList.add("on");
+}
+
+/* ---------- rosters: shared hitters directory + lineup builder ---------- */
+let rosterHitters = [], rosterTeams = [], lineupOrder = [], rosterLoaded = false;
+async function loadRosterData(){
+  if(rosterLoaded) return; // load once per session; reloads happen after edits
+  const [{data:h, error:hErr}, {data:t, error:tErr}] = await Promise.all([
+    sb.rpc("list_hitters"),
+    sb.rpc("list_teams")
+  ]);
+  if(hErr){ setSync("err","Roster load failed: "+hErr.message); return; }
+  rosterHitters = h || [];
+  rosterTeams = (t || []).map(x=>x.team);
+  document.getElementById("rteamList").innerHTML = rosterTeams.map(t=>`<option value="${esc(t)}">`).join("");
+  document.getElementById("lineupTeamPicker").innerHTML =
+    '<option value="">— select —</option>' + rosterTeams.map(t=>`<option value="${esc(t)}">${esc(t)}</option>`).join("");
+  rosterLoaded = true;
+  renderTeamsList();
+  renderAllHitters();
+}
+async function refreshRosterData(){ rosterLoaded = false; await loadRosterData(); }
+
+async function saveHitter(){
+  const name = document.getElementById("rfName").value.trim();
+  if(!name){ setSync("err","Name is required."); return; }
+  setSync("busy","Saving…");
+  const { data, error } = await sb.rpc("upsert_hitter", {
+    p_name:name,
+    p_team: document.getElementById("rfTeam").value.trim()||null,
+    p_hand: document.getElementById("rfHand").value||null,
+    p_notes: document.getElementById("rfNotes").value.trim()||null
+  });
+  if(error){ setSync("err","Save failed: "+error.message); return; }
+  setSync("ok","Saved "+name);
+  clearHitterForm();
+  await refreshRosterData();
+}
+function editHitter(id){
+  const h = rosterHitters.find(x=>x.id===id);
+  if(!h) return;
+  document.getElementById("rfName").value = h.name;
+  document.getElementById("rfTeam").value = h.team||"";
+  document.getElementById("rfHand").value = h.hand||"";
+  document.getElementById("rfNotes").value = h.notes||"";
+  document.getElementById("rformTitle").textContent = "Editing "+h.name;
+}
+function clearHitterForm(){
+  document.getElementById("rfName").value = "";
+  document.getElementById("rfTeam").value = "";
+  document.getElementById("rfHand").value = "";
+  document.getElementById("rfNotes").value = "";
+  document.getElementById("rformTitle").textContent = "Add / update hitter";
+}
+async function deleteHitter(id){
+  const h = rosterHitters.find(x=>x.id===id);
+  if(!h) return;
+  if(!confirm(`Remove ${h.name} from the roster directory? This doesn't touch any charted pitch data, just the roster entry.`)) return;
+  setSync("busy","Removing…");
+  const { error } = await sb.rpc("delete_hitter", {p_id:id});
+  if(error){ setSync("err","Delete failed: "+error.message); return; }
+  setSync("ok","Removed");
+  await refreshRosterData();
+}
+function renderTeamsList(){
+  const el = document.getElementById("teamsList");
+  if(!rosterTeams.length){ el.innerHTML = '<p class="empty">No teams yet — add a hitter with a team above.</p>'; return; }
+  el.innerHTML = rosterTeams.map(t=>{
+    const count = rosterHitters.filter(h=>h.team===t).length;
+    return `<div class="teamrow" onclick="showTeamRoster('${esc(t).replace(/'/g,"\\'")}')">
+      <div class="tn">${esc(t)}</div><div class="tc">${count} hitter${count===1?"":"s"}</div>
+    </div>`;
+  }).join("");
+}
+function showTeamRoster(team){
+  const body = document.getElementById("teamRosterBody");
+  const roster = rosterHitters.filter(h=>h.team===team).sort((a,b)=>a.name.localeCompare(b.name));
+  body.innerHTML = `<div class="card"><p class="lab">${esc(team)}</p>` +
+    (roster.length ? roster.map(h=>hitterRowHTML(h)).join("") : '<p class="empty">No hitters on this team yet.</p>') +
+    `</div>`;
+}
+function hitterRowHTML(h){
+  return `<div class="hrow">
+    <div class="hi"><div class="hn">${esc(h.name)}${h.hand?` (${esc(h.hand)})`:""}</div>
+      <div class="hm">${esc(h.team||"No team")}${h.notes?" · "+esc(h.notes):""}</div></div>
+    <div class="actions">
+      <button class="sm ghost" onclick="editHitter('${h.id}')">Edit</button>
+      <button class="sm danger" onclick="deleteHitter('${h.id}')">Del</button>
+    </div>
+  </div>`;
+}
+function renderAllHitters(){
+  const el = document.getElementById("allHittersList");
+  if(!rosterHitters.length){ el.innerHTML = '<p class="empty">No hitters saved yet.</p>'; return; }
+  el.innerHTML = rosterHitters.map(h=>hitterRowHTML(h)).join("");
+}
+function loadLineupTeam(){
+  const team = document.getElementById("lineupTeamPicker").value;
+  const body = document.getElementById("lineupBuilderBody");
+  if(!team){ body.innerHTML = '<p class="empty">Pick a team to build a lineup.</p>'; return; }
+  lineupOrder = rosterHitters.filter(h=>h.team===team).sort((a,b)=>a.name.localeCompare(b.name));
+  renderLineupBuilder();
+}
+function renderLineupBuilder(){
+  const body = document.getElementById("lineupBuilderBody");
+  if(!lineupOrder.length){
+    body.innerHTML = '<p class="empty">No hitters on this team yet — add some above first.</p>';
+    return;
+  }
+  const rows = lineupOrder.map((h,i)=>`
+    <div class="lineuprow">
+      <div class="larr">
+        <button onclick="moveLineup(${i},-1)" ${i===0?"disabled":""}>↑</button>
+        <button onclick="moveLineup(${i},1)" ${i===lineupOrder.length-1?"disabled":""}>↓</button>
+      </div>
+      <div class="ln">${esc(h.name)}</div>
+      <div class="lh">${esc(h.hand||"—")}</div>
+      <button class="sm ghost" onclick="removeLineup(${i})">Remove</button>
+    </div>`).join("");
+  const text = lineupOrder.map(h=> h.name + (h.hand && h.hand!=="S" ? " "+h.hand : (h.hand==="S" ? " R" : ""))).join("\n");
+  body.innerHTML = `
+    <div class="card">${rows}</div>
+    <div class="card">
+      <p class="lab">Paste into CHART.html's lineup field</p>
+      <textarea id="lineupOut" readonly onclick="this.select()">${esc(text)}</textarea>
+      <div class="btnrow"><button class="primary" onclick="copyLineup()">Copy lineup</button></div>
+      <p class="note">Switch hitters default to R here since CHART.html only tracks the batter's side for that at-bat — set the actual side when you chart if it differs that game.</p>
+    </div>
+  `;
+}
+function moveLineup(i, dir){
+  const j = i+dir;
+  if(j<0 || j>=lineupOrder.length) return;
+  [lineupOrder[i], lineupOrder[j]] = [lineupOrder[j], lineupOrder[i]];
+  renderLineupBuilder();
+}
+function removeLineup(i){
+  lineupOrder.splice(i,1);
+  renderLineupBuilder();
+}
+async function copyLineup(){
+  const text = document.getElementById("lineupOut").value;
+  try{
+    await navigator.clipboard.writeText(text);
+    setSync("ok","Lineup copied");
+  }catch(e){
+    document.getElementById("lineupOut").select();
+    setSync("err","Couldn't auto-copy — text is selected, copy manually.");
+  }
 }
 
 /* ---------- PA reconstruction (mirrors CHART.html's live-count logic) ---------- */
@@ -268,16 +489,28 @@ function renderZoneGridHTML(markers){
   for(let r=0;r<5;r++){
     for(let c=0;c<5;c++){
       const inZone = r>=1 && r<=3 && c>=1 && c<=3;
+      const isCenter = r===2 && c===2;
       const here = markers.filter(m=>{ const p=zoneGridPos(m.zone); return p && p.row===r && p.col===c; });
       let content = "";
       if(here.length){
-        content = here.map(m=>`<div style="background:${m.color};color:#fff;border-radius:5px;padding:2px 5px;font-size:10px;font-weight:700;font-family:'JetBrains Mono',monospace;margin:1px;white-space:nowrap">${esc(m.label)}</div>`).join("");
+        content = here.map(m=>`<div style="background:${m.color};color:#000;border-radius:3px;padding:1px 3px;font-size:8.5px;font-weight:700;font-family:'JetBrains Mono',monospace;margin:1px;white-space:nowrap;box-shadow:0 0 6px ${m.color}99">${esc(m.label)}</div>`).join("");
       }
-      cells += `<div style="aspect-ratio:1;border:1px solid ${inZone?'#3a5680':'#2c405f'};background:${inZone?'#1e2e49':'#16233a'};display:flex;align-items:center;justify-content:center;flex-wrap:wrap;border-radius:4px">${content}</div>`;
+      // crosshair: thin accent lines through the exact center of the zone, only on empty cells
+      const crossLines = (!here.length && inZone && (r===2 || c===2)) ? `
+        ${r===2 ? '<div style="position:absolute;left:0;right:0;top:50%;height:1px;background:#ff214033"></div>' : ''}
+        ${c===2 ? '<div style="position:absolute;top:0;bottom:0;left:50%;width:1px;background:#ff214033"></div>' : ''}
+      ` : "";
+      cells += `<div style="position:relative;aspect-ratio:1;border:1px solid ${inZone?'#5c1f2c':'#2a2a30'};background:${inZone?'#1a0c0f':'#0d0d0f'};display:flex;align-items:center;justify-content:center;flex-wrap:wrap;border-radius:2px;overflow:hidden">${crossLines}${content}</div>`;
     }
   }
-  return `<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:3px;max-width:280px;margin:8px auto 4px">${cells}</div>
-    <p class="note" style="text-align:center">Pitcher's-eye view · center box is the strike zone</p>`;
+  return `<div style="position:relative;max-width:280px;margin:10px auto 4px;padding:10px;border:1px solid #2a2a30;border-radius:4px;background:#0a0a0c">
+    <div style="position:absolute;top:4px;left:4px;width:10px;height:10px;border-top:2px solid var(--accent);border-left:2px solid var(--accent)"></div>
+    <div style="position:absolute;top:4px;right:4px;width:10px;height:10px;border-top:2px solid var(--accent);border-right:2px solid var(--accent)"></div>
+    <div style="position:absolute;bottom:4px;left:4px;width:10px;height:10px;border-bottom:2px solid var(--accent);border-left:2px solid var(--accent)"></div>
+    <div style="position:absolute;bottom:4px;right:4px;width:10px;height:10px;border-bottom:2px solid var(--accent);border-right:2px solid var(--accent)"></div>
+    <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:3px">${cells}</div>
+  </div>
+    <p class="note" style="text-align:center;letter-spacing:.04em">PITCHER'S-EYE VIEW · CENTER BOX IS THE STRIKE ZONE</p>`;
 }
 
 /* Batted-ball profile per pitch: GB/LD/FB/PU rates and hard-hit rate among balls in play. */
@@ -326,7 +559,7 @@ function pathsToTwoStrikes(pas){
 /* Per-pitch performance within a specific count situation (e.g. first pitch of the PA,
    or already at two strikes). Used to build count-aware recommendations rather than
    blending every count together. */
-function countBucketStats(pas, predicate){
+function countBucketStats(pas, predicate, preferInZone){
   const pitches = [];
   pas.forEach(pa=>pa.pitches.forEach(p=>{ if(predicate(p)) pitches.push(p); }));
   const codes = [...new Set(pitches.map(p=>p.pitch))];
@@ -337,11 +570,19 @@ function countBucketStats(pas, predicate){
     const bip = ps.filter(p=>p.res==="InPlay");
     const hardN = bip.filter(p=>p.hard==="Y").length;
     const outN = bip.filter(p=>p.bipRes==="Out"||p.bipRes==="DP").length;
+    // Location for the "typical spot": if preferInZone, only consider genuine
+    // strike-zone locations (1-9) unless the pitch literally has none — a chase-zone
+    // pitch that happened to get called/fouled shouldn't drive a "get ahead" recommendation.
+    let locSource = ps;
+    if(preferInZone){
+      const inZoneOnly = ps.filter(p=>p.zone>=1 && p.zone<=9);
+      if(inZoneOnly.length) locSource = inZoneOnly;
+    }
     const loc = {};
-    ps.forEach(p=>{ if(p.zone!=null) loc[p.zone]=(loc[p.zone]||0)+1; });
+    locSource.forEach(p=>{ if(p.zone!=null) loc[p.zone]=(loc[p.zone]||0)+1; });
     const topZoneEntry = Object.entries(loc).sort((a,b)=>b[1]-a[1])[0];
     const topZone = topZoneEntry ? +topZoneEntry[0] : null;
-    const topZoneHand = topZone!=null ? ((ps.find(p=>p.zone===topZone)||{}).hand) : null;
+    const topZoneHand = topZone!=null ? ((locSource.find(p=>p.zone===topZone)||{}).hand) : null;
     return {
       code, n:ps.length,
       strikePct: Math.round(strikeN/ps.length*100),
@@ -699,8 +940,8 @@ function renderPlan(){
   const pasR = allPAs.filter(pa=>pa.hand==="R");
 
   body.innerHTML = `
-    <div class="card"><p class="lab">Attack plan vs LHH</p>${attackPlanBlockHTML(pasL, "#3d8fd1")}</div>
-    <div class="card"><p class="lab">Attack plan vs RHH</p>${attackPlanBlockHTML(pasR, "#e0483d")}</div>
+    <div class="card"><p class="lab">Attack plan vs LHH</p>${attackPlanBlockHTML(pasL, "#ff2140")}</div>
+    <div class="card"><p class="lab">Attack plan vs RHH</p>${attackPlanBlockHTML(pasR, "#ff6a8a")}</div>
     <p class="note">Locations here are shown from the pitcher's own eye line — the same frame used while charting on video. Small samples (early season, few hitters of one hand faced) will look thin — this fills in and sharpens as more outings get logged.</p>
   `;
 }
@@ -717,9 +958,9 @@ function pickRecommendation(stats, minN, scoreFn){
 function attackPlanBlockHTML(pas, color){
   if(!pas.length) return '<p class="empty">Not enough same-handedness data logged yet to build a plan.</p>';
 
-  const strike1Stats = countBucketStats(pas, isStrike1);
-  const midStats = countBucketStats(pas, isMidCount);
-  const twoStrikeStats = countBucketStats(pas, isTwoStrike);
+  const strike1Stats = countBucketStats(pas, isStrike1, true);
+  const midStats = countBucketStats(pas, isMidCount, true);
+  const twoStrikeStats = countBucketStats(pas, isTwoStrike, false);
 
   // Strike 1: get ahead while limiting damage — favors high strike rate, penalizes hard contact.
   const strike1 = pickRecommendation(strike1Stats, 3, r => r.strikePct - (r.hardPct||0)*0.5);
@@ -729,9 +970,9 @@ function attackPlanBlockHTML(pas, color){
   const twoStrike = pickRecommendation(twoStrikeStats, 2, r => r.whiffPct*0.6 + (r.outPct||0)*0.4);
 
   const markers = [];
-  if(strike1.best && strike1.best.topZone!=null) markers.push({zone:strike1.best.topZone, label:strike1.best.code+" (1st)", color:"#5d7a9c"});
-  if(mid.best && mid.best.topZone!=null) markers.push({zone:mid.best.topZone, label:mid.best.code+" (mid)", color:"#d99a2b"});
-  if(twoStrike.best && twoStrike.best.topZone!=null) markers.push({zone:twoStrike.best.topZone, label:twoStrike.best.code+" (finish)", color});
+  if(strike1.best && strike1.best.topZone!=null) markers.push({zone:strike1.best.topZone, label:strike1.best.code+" 1st", color:"#ff9aa8"});
+  if(mid.best && mid.best.topZone!=null) markers.push({zone:mid.best.topZone, label:mid.best.code+" mid", color:"#ffc94d"});
+  if(twoStrike.best && twoStrike.best.topZone!=null) markers.push({zone:twoStrike.best.topZone, label:twoStrike.best.code+" fin", color});
   const grid = renderZoneGridHTML(markers);
 
   const bucketTable = (title, r, extraCols) => r.table.length ? `
@@ -797,12 +1038,12 @@ function drawTrend(){
   }
   trendChart = new Chart(ctx, {
     type:'line',
-    data:{ labels, datasets:[{ label: code+" "+metricLabel, data, borderColor:'#3d8fd1', backgroundColor:'rgba(61,143,209,.15)',
+    data:{ labels, datasets:[{ label: code+" "+metricLabel, data, borderColor:'#ff2140', backgroundColor:'rgba(255,33,64,.15)',
       tension:.25, fill:true, pointRadius:3 }] },
     options:{ responsive:true, maintainAspectRatio:false,
-      scales:{ y:{ beginAtZero:true, max:100, ticks:{color:'#8b9cb5'}, grid:{color:'#2c405f'} },
-               x:{ ticks:{color:'#8b9cb5'}, grid:{color:'#22314b'} } },
-      plugins:{ legend:{ labels:{ color:'#eef2f7' } } } }
+      scales:{ y:{ beginAtZero:true, max:100, ticks:{color:'#8c8a92'}, grid:{color:'#2a2a30'} },
+               x:{ ticks:{color:'#8c8a92'}, grid:{color:'#232327'} } },
+      plugins:{ legend:{ labels:{ color:'#f5f4f2' } } } }
   });
 }
 

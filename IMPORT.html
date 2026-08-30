@@ -6,22 +6,22 @@
 <title>Import Line Report</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 :root{
-  --bg:#0f1826; --surf:#16233a; --surf2:#1e2e49; --line:#2c405f;
-  --txt:#eef2f7; --dim:#8b9cb5; --dimmer:#5d7a9c;
-  --red:#e0483d; --grn:#2fa36a; --amb:#d99a2b; --blu:#3d8fd1;
+  --bg:#09090b; --surf:#131316; --surf2:#1c1c21; --line:#2a2a30;
+  --txt:#f5f4f2; --dim:#8c8a92; --dimmer:#56545c;
+  --red:#c81e3a; --grn:#2fd980; --amb:#ffc94d; --accent:#ff2140;
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;padding:0}
 body{background:var(--bg);color:var(--txt);font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;
   -webkit-font-smoothing:antialiased;padding:12px 11px 60px;font-size:15px}
 .wrap{max-width:640px;margin:0 auto}
-h1{font-family:'Barlow Condensed',sans-serif;font-size:24px;font-weight:700;margin:2px 0 12px}
+h1{font-family:'Chakra Petch',sans-serif;font-size:24px;font-weight:700;margin:2px 0 12px}
 .card{background:var(--surf);border:1px solid var(--line);border-radius:10px;padding:13px;margin-bottom:11px}
-.lab{font-family:'Barlow Condensed',sans-serif;font-size:12.5px;font-weight:700;letter-spacing:.16em;
+.lab{font-family:'Chakra Petch',sans-serif;font-size:12.5px;font-weight:700;letter-spacing:.16em;
   text-transform:uppercase;color:var(--dim);margin:0 0 9px}
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
@@ -30,20 +30,20 @@ label small{display:block;font-size:10.5px;color:var(--dim);letter-spacing:.06em
   text-transform:uppercase;margin-bottom:4px;font-weight:600}
 input,select,textarea{width:100%;background:var(--bg);border:1px solid var(--line);border-radius:7px;
   color:var(--txt);padding:9px 10px;font-size:14px;font-family:inherit}
-input:focus,select:focus,textarea:focus{outline:2px solid var(--blu);outline-offset:-1px}
+input:focus,select:focus,textarea:focus{outline:2px solid var(--accent);outline-offset:-1px}
 .field{margin-bottom:9px}
 button{font-family:'Inter',sans-serif;font-size:14px;font-weight:600;cursor:pointer;
   background:var(--surf2);color:var(--txt);border:1px solid var(--line);
   border-radius:8px;padding:11px 12px;min-height:44px}
 button:active{transform:scale(.97)}
-button.primary{background:var(--blu);border-color:var(--blu);color:#fff;width:100%;margin-top:6px}
+button.primary{background:var(--accent);border-color:var(--accent);color:#fff;width:100%;margin-top:6px}
 .btnrow{display:flex;gap:6px;flex-wrap:wrap;margin-top:9px}
 .btnrow button{flex:1}
 .syncbar{display:flex;align-items:center;gap:8px;font-size:11.5px;color:var(--dim);margin-bottom:11px}
 .dot{width:8px;height:8px;border-radius:50%;background:var(--dimmer)}
 .dot.ok{background:var(--grn)} .dot.err{background:var(--red)} .dot.busy{background:var(--amb)}
 .pitchRow{display:grid;grid-template-columns:56px 1fr 1fr 1fr 1fr;gap:6px;align-items:center;margin-bottom:7px}
-.pitchRow .pcode{font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:17px;text-align:center}
+.pitchRow .pcode{font-family:'Chakra Petch',sans-serif;font-weight:700;font-size:17px;text-align:center}
 .pitchhead{display:grid;grid-template-columns:56px 1fr 1fr 1fr 1fr;gap:6px;font-size:9.5px;color:var(--dim);
   text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;font-weight:600}
 .note{font-size:11.5px;color:var(--dim);line-height:1.55;margin-top:9px}

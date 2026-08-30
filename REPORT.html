@@ -6,99 +6,92 @@
 <title>Pitcher Report</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Rye&family=Bebas+Neue&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
 <style>
 :root{
-  --bg:#120b07; --leather:#241811; --leather2:#2e1f15; --paper:#f4ead4; --ink:#241812; --sub:#7a6a52;
-  --line:#c9a86a55; --brass:#c9a227; --brass2:#8a6a1f; --rust:#8a3324; --iron:#3a3128;
+  --bg:#09090b; --surf:#131316; --surf2:#1c1c21; --line:#2a2a30;
+  --txt:#f5f4f2; --sub:#8c8a92; --accent:#ff2140; --accent2:#ff6a8a; --amb:#ffc94d; --iron:#2a2a30;
 }
 *{box-sizing:border-box}
 html,body{margin:0;padding:0}
 body{
-  background:
-    radial-gradient(ellipse at 50% -10%, #2a1c12 0%, #120b07 60%),
-    repeating-linear-gradient(135deg, rgba(0,0,0,.15) 0 2px, transparent 2px 6px);
-  color:var(--paper);font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;
+  background:radial-gradient(ellipse at 50% -10%, #16090c 0%, #09090b 60%);
+  color:var(--txt);font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;
   padding:22px 14px 60px}
-.wrap{max-width:760px;margin:0 auto;background:var(--paper);border-radius:6px;overflow:hidden;
-  box-shadow:0 24px 70px rgba(0,0,0,.55), 0 0 0 2px var(--brass2), 0 0 0 6px #120b07;
-  position:relative;color:var(--ink)}
-.wrap::before,.wrap::after{content:"";position:absolute;width:9px;height:9px;border-radius:50%;
-  background:radial-gradient(circle at 35% 30%, #e8cd7a, #8a6a1f 70%);
-  box-shadow:0 1px 2px rgba(0,0,0,.6);top:10px;z-index:5}
-.wrap::before{left:10px}
-.wrap::after{right:10px}
+.wrap{max-width:760px;margin:0 auto;background:var(--surf);border-radius:6px;overflow:hidden;
+  box-shadow:0 24px 70px rgba(0,0,0,.6), 0 0 0 1px var(--line);
+  position:relative;color:var(--txt)}
+.wrap::before,.wrap::after,.foot::before,.foot::after{content:"";position:absolute;width:14px;height:14px;
+  border-top:2px solid var(--accent);z-index:5}
+.wrap::before{top:10px;left:10px;border-left:2px solid var(--accent)}
+.wrap::after{top:10px;right:10px;border-left:none;border-right:2px solid var(--accent)}
 .foot{position:relative}
-.foot::before,.foot::after{content:"";position:absolute;width:9px;height:9px;border-radius:50%;
-  background:radial-gradient(circle at 35% 30%, #e8cd7a, #8a6a1f 70%);
-  box-shadow:0 1px 2px rgba(0,0,0,.6);bottom:10px}
-.foot::before{left:10px}
-.foot::after{right:10px}
+.foot::before,.foot::after{border-top:none;border-bottom:2px solid var(--accent)}
+.foot::before{bottom:10px;left:10px;border-left:2px solid var(--accent)}
+.foot::after{bottom:10px;right:10px;border-right:2px solid var(--accent)}
 
-.pick{max-width:760px;margin:0 auto 16px;background:var(--leather);border:1px solid var(--brass2);border-radius:8px;padding:14px}
-.pick select,.pick input{width:100%;background:#1a120b;border:1px solid var(--brass2);border-radius:6px;color:var(--paper);
+.pick{max-width:760px;margin:0 auto 16px;background:var(--surf);border:1px solid var(--line);border-radius:8px;padding:14px}
+.pick select,.pick input{width:100%;background:var(--bg);border:1px solid var(--line);border-radius:6px;color:var(--txt);
   padding:9px 10px;font-size:14px;font-family:inherit;margin-top:6px}
-.pick label{font-size:11px;color:#b8a988;text-transform:uppercase;letter-spacing:.1em;font-weight:600;font-family:'Bebas Neue',sans-serif}
+.pick label{font-size:11px;color:var(--sub);text-transform:uppercase;letter-spacing:.1em;font-weight:600;font-family:'Chakra Petch',sans-serif}
 .pick .row{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end}
 .pick .row > div{flex:1;min-width:160px}
-.pick button{margin-top:10px;background:linear-gradient(180deg,#c9a227,#8a6a1f);border:1px solid #6b5117;color:#1a1206;
+.pick button{margin-top:10px;background:var(--accent);border:1px solid var(--accent);color:#fff;
   font-weight:700;border-radius:6px;padding:10px 16px;cursor:pointer;font-size:13.5px;letter-spacing:.04em;
-  font-family:'Bebas Neue',sans-serif;text-transform:uppercase}
+  font-family:'Chakra Petch',sans-serif;text-transform:uppercase;box-shadow:0 0 16px #ff214055}
 
-.head{background:
-    radial-gradient(ellipse at 50% 0%, #3a2417 0%, #1c130d 75%);
-  color:var(--paper);padding:38px 30px 30px;text-align:center;position:relative;
-  border-bottom:3px double var(--brass2)}
-.head .kicker{font-family:'Bebas Neue',sans-serif;font-size:14px;letter-spacing:.42em;text-transform:uppercase;
-  color:var(--brass);font-weight:400}
-.head h1{font-family:'Rye',serif;font-size:42px;font-weight:400;margin:10px 0 6px;letter-spacing:.01em;
-  color:#f4ead4;text-shadow:0 2px 0 #000, 0 1px 0 #6b5117}
-.head .meta{font-size:13px;color:#c9b98f;font-family:'JetBrains Mono',monospace}
-.head .asof{margin-top:12px;font-size:10.5px;color:#8a7a5c;letter-spacing:.06em}
+.head{background:radial-gradient(ellipse at 50% 0%, #1a0d10 0%, #0d0708 75%);
+  color:var(--txt);padding:38px 30px 30px;text-align:center;position:relative;
+  border-bottom:1px solid var(--line)}
+.head .kicker{font-family:'Chakra Petch',sans-serif;font-size:13px;letter-spacing:.42em;text-transform:uppercase;
+  color:var(--accent);font-weight:600}
+.head h1{font-family:'Chakra Petch',sans-serif;font-size:40px;font-weight:700;margin:10px 0 6px;letter-spacing:.01em;
+  color:var(--txt);text-shadow:0 0 24px #ff214044}
+.head .meta{font-size:13px;color:var(--sub);font-family:'JetBrains Mono',monospace}
+.head .asof{margin-top:12px;font-size:10.5px;color:#5c5a62;letter-spacing:.06em}
 
-.section{padding:26px 30px;border-bottom:1px solid var(--line);background:var(--paper)}
+.section{padding:26px 30px;border-bottom:1px solid var(--line);background:var(--surf)}
 .section:last-child{border-bottom:none}
-.section h2{font-family:'Bebas Neue',sans-serif;font-size:21px;font-weight:400;letter-spacing:.08em;
-  text-transform:uppercase;color:var(--rust);margin:0 0 16px;border-bottom:2px solid var(--brass);
+.section h2{font-family:'Chakra Petch',sans-serif;font-size:19px;font-weight:700;letter-spacing:.06em;
+  text-transform:uppercase;color:var(--accent);margin:0 0 16px;border-bottom:1px solid var(--accent);
   display:inline-block;padding-bottom:4px}
 
 .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
-.kpi{background:radial-gradient(circle at 35% 30%, #ece0c4, #d8c69a 75%);
-  border:1px solid var(--brass2);border-radius:10px;padding:14px 8px;text-align:center;
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.5), inset 0 -2px 3px rgba(0,0,0,.15)}
-.kpi .v{font-family:'Rye',serif;font-size:24px;font-weight:400;color:var(--ink)}
+.kpi{background:var(--surf2);border:1px solid var(--line);border-radius:6px;padding:14px 8px;text-align:center}
+.kpi .v{font-family:'JetBrains Mono',monospace;font-size:24px;font-weight:700;color:var(--txt)}
 .kpi .k{font-size:9.5px;color:var(--sub);text-transform:uppercase;letter-spacing:.08em;margin-top:4px;font-weight:600}
 
 table{width:100%;border-collapse:collapse;font-size:13.5px}
-th{font-family:'Bebas Neue',sans-serif;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--sub);font-weight:400;
-  text-align:right;padding:0 8px 8px;border-bottom:2px solid var(--iron)}
+th{font-family:'Chakra Petch',sans-serif;font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--sub);font-weight:600;
+  text-align:right;padding:0 8px 8px;border-bottom:1px solid var(--line)}
 th:first-child{text-align:left}
-td{padding:9px 8px;border-bottom:1px solid var(--line);text-align:right;font-family:'JetBrains Mono',monospace;font-size:13px}
-td:first-child{text-align:left;font-family:'Bebas Neue',sans-serif;font-weight:400;font-size:17px;letter-spacing:.02em;color:var(--rust)}
+td{padding:9px 8px;border-bottom:1px solid var(--line);text-align:right;font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--txt)}
+td:first-child{text-align:left;font-family:'Chakra Petch',sans-serif;font-weight:700;font-size:16px;letter-spacing:.02em;color:var(--accent)}
 
 .badgebar{display:flex;flex-wrap:wrap;gap:8px}
-.badge{background:linear-gradient(180deg,#3a2417,#241811);border:1px solid var(--brass2);color:var(--brass);
+.badge{background:var(--surf2);border:1px solid var(--line);color:var(--accent2);
   border-radius:4px;padding:7px 13px;font-size:12px;font-weight:600;font-family:'JetBrains Mono',monospace}
 
 .chartwrap{position:relative;height:220px;margin-top:4px}
 
 .note{font-size:12px;color:var(--sub);line-height:1.6;margin-top:10px}
-.foot{padding:16px 30px;font-size:10.5px;color:#c9b98f;text-align:center;background:#1c130d;
-  letter-spacing:.1em;text-transform:uppercase;font-family:'Bebas Neue',sans-serif}
+.foot{padding:16px 30px;font-size:10.5px;color:var(--sub);text-align:center;background:var(--bg);
+  letter-spacing:.1em;text-transform:uppercase;font-family:'Chakra Petch',sans-serif}
 
 .printbar{max-width:760px;margin:0 auto 12px;display:flex;justify-content:flex-end}
-.printbar button{background:linear-gradient(180deg,#c9a227,#8a6a1f);border:1px solid #6b5117;color:#1a1206;border-radius:6px;padding:9px 16px;
-  font-size:13px;font-weight:700;cursor:pointer;font-family:'Bebas Neue',sans-serif;letter-spacing:.04em;text-transform:uppercase}
+.printbar button{background:var(--accent);border:1px solid var(--accent);color:#fff;border-radius:6px;padding:9px 16px;
+  font-size:13px;font-weight:700;cursor:pointer;font-family:'Chakra Petch',sans-serif;letter-spacing:.04em;text-transform:uppercase;
+  box-shadow:0 0 16px #ff214055}
 
-.empty{text-align:center;color:var(--sub);padding:30px;font-size:14px;background:var(--paper)}
+.empty{text-align:center;color:var(--sub);padding:30px;font-size:14px;background:var(--surf)}
 
 @media print{
   body{background:#fff;padding:0}
   .pick,.printbar,.rivet{display:none}
   .wrap{box-shadow:none;border-radius:0}
-  .head{background:#1c130d !important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .head{background:#0d0708 !important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 }
 </style>
 </head>
@@ -196,13 +189,23 @@ function renderZoneGridHTML(markers){
       const here = markers.filter(m=>{ const p=zoneGridPos(m.zone); return p && p.row===r && p.col===c; });
       let content = "";
       if(here.length){
-        content = here.map(m=>`<div style="background:${m.color};color:#fff;border-radius:5px;padding:2px 5px;font-size:10px;font-weight:700;font-family:'JetBrains Mono',monospace;margin:1px;white-space:nowrap">${esc(m.label)}</div>`).join("");
+        content = here.map(m=>`<div style="background:${m.color};color:#000;border-radius:3px;padding:1px 3px;font-size:8.5px;font-weight:700;font-family:'JetBrains Mono',monospace;margin:1px;white-space:nowrap;box-shadow:0 0 6px ${m.color}99">${esc(m.label)}</div>`).join("");
       }
-      cells += `<div style="aspect-ratio:1;border:1px solid ${inZone?'#8a6a1f':'#c9a86a55'};background:${inZone?'#ece0c4':'#f4ead4'};display:flex;align-items:center;justify-content:center;flex-wrap:wrap;border-radius:4px">${content}</div>`;
+      const crossLines = (!here.length && inZone && (r===2 || c===2)) ? `
+        ${r===2 ? '<div style="position:absolute;left:0;right:0;top:50%;height:1px;background:#ff214033"></div>' : ''}
+        ${c===2 ? '<div style="position:absolute;top:0;bottom:0;left:50%;width:1px;background:#ff214033"></div>' : ''}
+      ` : "";
+      cells += `<div style="position:relative;aspect-ratio:1;border:1px solid ${inZone?'#5c1f2c':'#2a2a30'};background:${inZone?'#1a0c0f':'#0d0d0f'};display:flex;align-items:center;justify-content:center;flex-wrap:wrap;border-radius:2px;overflow:hidden">${crossLines}${content}</div>`;
     }
   }
-  return `<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:3px;max-width:280px;margin:8px auto 4px">${cells}</div>
-    <p class="note" style="text-align:center">Pitcher's-eye view · center box is the strike zone</p>`;
+  return `<div style="position:relative;max-width:280px;margin:10px auto 4px;padding:10px;border:1px solid #2a2a30;border-radius:4px;background:#0a0a0c">
+    <div style="position:absolute;top:4px;left:4px;width:10px;height:10px;border-top:2px solid #ff2140;border-left:2px solid #ff2140"></div>
+    <div style="position:absolute;top:4px;right:4px;width:10px;height:10px;border-top:2px solid #ff2140;border-right:2px solid #ff2140"></div>
+    <div style="position:absolute;bottom:4px;left:4px;width:10px;height:10px;border-bottom:2px solid #ff2140;border-left:2px solid #ff2140"></div>
+    <div style="position:absolute;bottom:4px;right:4px;width:10px;height:10px;border-bottom:2px solid #ff2140;border-right:2px solid #ff2140"></div>
+    <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:3px">${cells}</div>
+  </div>
+    <p class="note" style="text-align:center;letter-spacing:.04em">PITCHER'S-EYE VIEW · CENTER BOX IS THE STRIKE ZONE</p>`;
 }
 function battedBallProfile(rows, codes){
   return codes.map(code=>{
@@ -240,7 +243,7 @@ function pathsToTwoStrikes(pas){
     path, n:v.n, kPct: Math.round(v.k/v.n*100), avgLen: (v.totalLen/v.n).toFixed(1)
   })).sort((a,b)=>b.n-a.n);
 }
-function countBucketStats(pas, predicate){
+function countBucketStats(pas, predicate, preferInZone){
   const pitches = [];
   pas.forEach(pa=>pa.pitches.forEach(p=>{ if(predicate(p)) pitches.push(p); }));
   const codes = [...new Set(pitches.map(p=>p.pitch))];
@@ -251,11 +254,16 @@ function countBucketStats(pas, predicate){
     const bip = ps.filter(p=>p.res==="InPlay");
     const hardN = bip.filter(p=>p.hard==="Y").length;
     const outN = bip.filter(p=>p.bipRes==="Out"||p.bipRes==="DP").length;
+    let locSource = ps;
+    if(preferInZone){
+      const inZoneOnly = ps.filter(p=>p.zone>=1 && p.zone<=9);
+      if(inZoneOnly.length) locSource = inZoneOnly;
+    }
     const loc = {};
-    ps.forEach(p=>{ if(p.zone!=null) loc[p.zone]=(loc[p.zone]||0)+1; });
+    locSource.forEach(p=>{ if(p.zone!=null) loc[p.zone]=(loc[p.zone]||0)+1; });
     const topZoneEntry = Object.entries(loc).sort((a,b)=>b[1]-a[1])[0];
     const topZone = topZoneEntry ? +topZoneEntry[0] : null;
-    const topZoneHand = topZone!=null ? ((ps.find(p=>p.zone===topZone)||{}).hand) : null;
+    const topZoneHand = topZone!=null ? ((locSource.find(p=>p.zone===topZone)||{}).hand) : null;
     return {
       code, n:ps.length,
       strikePct: Math.round(strikeN/ps.length*100),
@@ -311,18 +319,18 @@ function sequenceAnalysis(pas, minN){
 function attackPlanBlockHTML(pas, color){
   if(!pas.length) return '<p class="note">Not enough same-handedness data logged yet to build a plan.</p>';
 
-  const strike1Stats = countBucketStats(pas, isStrike1);
-  const midStats = countBucketStats(pas, isMidCount);
-  const twoStrikeStats = countBucketStats(pas, isTwoStrike);
+  const strike1Stats = countBucketStats(pas, isStrike1, true);
+  const midStats = countBucketStats(pas, isMidCount, true);
+  const twoStrikeStats = countBucketStats(pas, isTwoStrike, false);
 
   const strike1 = pickRecommendation(strike1Stats, 3, r => r.strikePct - (r.hardPct||0)*0.5);
   const mid = pickRecommendation(midStats, 3, r => r.whiffPct + (r.hardPct!=null ? (100-r.hardPct)*0.15 : 0));
   const twoStrike = pickRecommendation(twoStrikeStats, 2, r => r.whiffPct*0.6 + (r.outPct||0)*0.4);
 
   const markers = [];
-  if(strike1.best && strike1.best.topZone!=null) markers.push({zone:strike1.best.topZone, label:strike1.best.code+" (1st)", color:"#8a6a1f"});
-  if(mid.best && mid.best.topZone!=null) markers.push({zone:mid.best.topZone, label:mid.best.code+" (mid)", color:"#b45309"});
-  if(twoStrike.best && twoStrike.best.topZone!=null) markers.push({zone:twoStrike.best.topZone, label:twoStrike.best.code+" (finish)", color});
+  if(strike1.best && strike1.best.topZone!=null) markers.push({zone:strike1.best.topZone, label:strike1.best.code+" 1st", color:"#ff9aa8"});
+  if(mid.best && mid.best.topZone!=null) markers.push({zone:mid.best.topZone, label:mid.best.code+" mid", color:"#ffc94d"});
+  if(twoStrike.best && twoStrike.best.topZone!=null) markers.push({zone:twoStrike.best.topZone, label:twoStrike.best.code+" fin", color});
   const grid = renderZoneGridHTML(markers);
 
   const bucketTable = (title, r) => r.table.length ? `
@@ -485,17 +493,17 @@ function buildReportFromPayload(payload){
 
     <div class="section">
       <h2>Attack plan vs LHH</h2>
-      ${attackPlanBlockHTML(pasVsL, "#1d4ed8")}
+      ${attackPlanBlockHTML(pasVsL, "#ff2140")}
     </div>
 
     <div class="section">
       <h2>Attack plan vs RHH</h2>
-      ${attackPlanBlockHTML(pasVsR, "#8a3324")}
+      ${attackPlanBlockHTML(pasVsR, "#ff6a8a")}
     </div>
 
     <div class="section">
       <h2>Whiff% trend</h2>
-      <select id="trendPitch" onchange="drawTrend()" style="max-width:160px;padding:8px;border:1px solid #8a6a1f;border-radius:6px;font-family:'JetBrains Mono',monospace;background:#f4ead4;color:#241812">
+      <select id="trendPitch" onchange="drawTrend()" style="max-width:160px;padding:8px;border:1px solid #2a2a30;border-radius:6px;font-family:'JetBrains Mono',monospace;background:#131316;color:#f5f4f2">
         ${codes.map(c=>`<option value="${esc(c)}">${esc(c)}</option>`).join("")}
       </select>
       <div class="chartwrap"><canvas id="trendCanvas"></canvas></div>
@@ -531,11 +539,11 @@ function drawTrend(){
   }
   trendChart = new Chart(ctx, {
     type:'line',
-    data:{ labels, datasets:[{ label: code+" whiff%", data, borderColor:'#8a6a1f', backgroundColor:'rgba(201,162,39,.18)',
-      tension:.25, fill:true, pointRadius:3, pointBackgroundColor:'#8a3324' }] },
+    data:{ labels, datasets:[{ label: code+" whiff%", data, borderColor:'#ff2140', backgroundColor:'rgba(255,33,64,.15)',
+      tension:.25, fill:true, pointRadius:3, pointBackgroundColor:'#ff6a8a' }] },
     options:{ responsive:true, maintainAspectRatio:false,
-      scales:{ y:{ beginAtZero:true, max:100, ticks:{color:'#7a6a52'}, grid:{color:'#c9a86a33'} },
-               x:{ ticks:{color:'#7a6a52'}, grid:{color:'#c9a86a22'} } },
+      scales:{ y:{ beginAtZero:true, max:100, ticks:{color:'#8c8a92'}, grid:{color:'#2a2a3055'} },
+               x:{ ticks:{color:'#8c8a92'}, grid:{color:'#2a2a3033'} } },
       plugins:{ legend:{ display:false } } }
   });
 }
