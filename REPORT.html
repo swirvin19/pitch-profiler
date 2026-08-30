@@ -143,10 +143,10 @@ function buildPAs(rows){
   const pas = [];
   let current = null, b=0, s=0;
   rows.forEach(r=>{
-    const p = {pitch:r.pitch, res:r.result, zone:r.zone, velo:r.velo, batter:r.batter, hand:r.hand, bip:r.bip_type, bipRes:r.bip_result};
+    const p = {pitch:r.pitch, res:r.result, zone:r.zone, velo:r.velo, batter:r.batter, hand:r.hand, bip:r.bip_type, bipRes:r.bip_result, hard:r.hard};
     if(current && p.batter !== current.batter){ current.outcome="incomplete"; pas.push(current); current=null; }
     if(!current){ current = {batter:p.batter, hand:p.hand, pitches:[]}; b=0; s=0; }
-    p._sBefore=s;
+    p._bBefore=b; p._sBefore=s;
     if(p.res==="Ball") b++;
     else if(p.res==="Called"||p.res==="Whiff") s++;
     else if(p.res==="Foul" && s<2) s++;
@@ -166,18 +166,25 @@ function paOutcome(last, s, b){
   return "incomplete";
 }
 function isOutOutcome(o){ return o==="Out" || o==="DP" || o==="K (swinging)" || o==="K (looking)"; }
-function zoneLabel(z){
+function zoneLabel(z, hand){
   if(z==null) return "—";
-  const inner = {1:"Up-R",2:"Up-Mid",3:"Up-L",4:"Mid-R",5:"Heart",6:"Mid-L",7:"Low-R",8:"Low-Mid",9:"Low-L"};
-  const outer = {11:"Up-R chase",12:"Up-L chase",13:"Low-R chase",14:"Low-L chase"};
-  return inner[z] || outer[z] || "—";
+  if(z===5) return "Heart";
+  const row = {1:"Up",2:"Up",3:"Up",4:"Thigh",6:"Thigh",7:"Low",8:"Low",9:"Low",11:"Up",12:"Up",13:"Low",14:"Low"}[z];
+  const side = {1:"L",2:"Mid",3:"R",4:"L",6:"R",7:"L",8:"Mid",9:"R",11:"L",12:"R",13:"L",14:"R"}[z];
+  const chase = z>=11 ? " chase" : "";
+  if(side==="Mid") return row+"-Middle"+chase;
+  let horiz;
+  if(hand==="L") horiz = side==="L" ? "In" : "Away";
+  else if(hand==="R") horiz = side==="R" ? "In" : "Away";
+  else horiz = side;
+  return row+"-"+horiz+chase;
 }
 function zoneGridPos(z){
   const pos = {
-    1:{row:1,col:3}, 2:{row:1,col:2}, 3:{row:1,col:1},
-    4:{row:2,col:3}, 5:{row:2,col:2}, 6:{row:2,col:1},
-    7:{row:3,col:3}, 8:{row:3,col:2}, 9:{row:3,col:1},
-    11:{row:0,col:4}, 12:{row:0,col:0}, 13:{row:4,col:4}, 14:{row:4,col:0}
+    1:{row:1,col:1}, 2:{row:1,col:2}, 3:{row:1,col:3},
+    4:{row:2,col:1}, 5:{row:2,col:2}, 6:{row:2,col:3},
+    7:{row:3,col:1}, 8:{row:3,col:2}, 9:{row:3,col:3},
+    11:{row:0,col:0}, 12:{row:0,col:4}, 13:{row:4,col:0}, 14:{row:4,col:4}
   };
   return pos[z] || null;
 }
@@ -233,6 +240,44 @@ function pathsToTwoStrikes(pas){
     path, n:v.n, kPct: Math.round(v.k/v.n*100), avgLen: (v.totalLen/v.n).toFixed(1)
   })).sort((a,b)=>b.n-a.n);
 }
+function countBucketStats(pas, predicate){
+  const pitches = [];
+  pas.forEach(pa=>pa.pitches.forEach(p=>{ if(predicate(p)) pitches.push(p); }));
+  const codes = [...new Set(pitches.map(p=>p.pitch))];
+  return codes.map(code=>{
+    const ps = pitches.filter(p=>p.pitch===code);
+    const strikeN = ps.filter(p=>["Called","Whiff","Foul","InPlay"].includes(p.res)).length;
+    const whiffN = ps.filter(p=>p.res==="Whiff").length;
+    const bip = ps.filter(p=>p.res==="InPlay");
+    const hardN = bip.filter(p=>p.hard==="Y").length;
+    const outN = bip.filter(p=>p.bipRes==="Out"||p.bipRes==="DP").length;
+    const loc = {};
+    ps.forEach(p=>{ if(p.zone!=null) loc[p.zone]=(loc[p.zone]||0)+1; });
+    const topZoneEntry = Object.entries(loc).sort((a,b)=>b[1]-a[1])[0];
+    const topZone = topZoneEntry ? +topZoneEntry[0] : null;
+    const topZoneHand = topZone!=null ? ((ps.find(p=>p.zone===topZone)||{}).hand) : null;
+    return {
+      code, n:ps.length,
+      strikePct: Math.round(strikeN/ps.length*100),
+      whiffPct: Math.round(whiffN/ps.length*100),
+      hardPct: bip.length ? Math.round(hardN/bip.length*100) : null,
+      outPct: bip.length ? Math.round(outN/bip.length*100) : null,
+      bipN: bip.length,
+      topZone: topZone,
+      topZoneLabel: topZone!=null ? zoneLabel(topZone, topZoneHand) : "—"
+    };
+  }).filter(r=>r.n>0);
+}
+const isStrike1 = p => p._bBefore===0 && p._sBefore===0;
+const isMidCount = p => !(p._bBefore===0 && p._sBefore===0) && p._sBefore<2;
+const isTwoStrike = p => p._sBefore===2;
+function pickRecommendation(stats, minN, scoreFn){
+  const qualified = stats.filter(r=>r.n>=minN);
+  if(!qualified.length) return {best:null, table: stats.sort((a,b)=>b.n-a.n)};
+  const ranked = qualified.slice().sort((a,b)=> scoreFn(b)-scoreFn(a));
+  return {best: ranked[0], table: stats.slice().sort((a,b)=>b.n-a.n)};
+}
+
 function sequenceAnalysis(pas, minN){
   const seq = {};
   pas.forEach(pa=>{
@@ -242,7 +287,7 @@ function sequenceAnalysis(pas, minN){
       if(!seq[key]) seq[key] = {n:0, whiff:0, loc:{}, locZone:{}, outEnd:0, endPitch:cur.pitch};
       seq[key].n++;
       if(cur.res==="Whiff") seq[key].whiff++;
-      const lbl = zoneLabel(cur.zone);
+      const lbl = zoneLabel(cur.zone, cur.hand);
       seq[key].loc[lbl] = (seq[key].loc[lbl]||0) + 1;
       if(cur.zone!=null) seq[key].locZone[cur.zone] = (seq[key].locZone[cur.zone]||0) + 1;
       const isLastPitch = (i === pa.pitches.length-1);
@@ -263,18 +308,39 @@ function sequenceAnalysis(pas, minN){
   const bestOut = qualified.length ? qualified.slice().sort((a,b)=>b.outPct-a.outPct)[0] : null;
   return {stock, bestOut, all: qualified};
 }
-function attackPlanBlockHTML(sa, color){
-  if(!sa.all.length) return '<p class="note">Not enough same-handedness data logged yet to build a plan.</p>';
+function attackPlanBlockHTML(pas, color){
+  if(!pas.length) return '<p class="note">Not enough same-handedness data logged yet to build a plan.</p>';
+
+  const strike1Stats = countBucketStats(pas, isStrike1);
+  const midStats = countBucketStats(pas, isMidCount);
+  const twoStrikeStats = countBucketStats(pas, isTwoStrike);
+
+  const strike1 = pickRecommendation(strike1Stats, 3, r => r.strikePct - (r.hardPct||0)*0.5);
+  const mid = pickRecommendation(midStats, 3, r => r.whiffPct + (r.hardPct!=null ? (100-r.hardPct)*0.15 : 0));
+  const twoStrike = pickRecommendation(twoStrikeStats, 2, r => r.whiffPct*0.6 + (r.outPct||0)*0.4);
+
   const markers = [];
-  if(sa.stock && sa.stock.topLocZone!=null) markers.push({zone:sa.stock.topLocZone, label:sa.stock.endPitch+" (stock)", color:"#8a6a1f"});
-  if(sa.bestOut && sa.bestOut.topLocZone!=null) markers.push({zone:sa.bestOut.topLocZone, label:sa.bestOut.endPitch+" (out)", color});
+  if(strike1.best && strike1.best.topZone!=null) markers.push({zone:strike1.best.topZone, label:strike1.best.code+" (1st)", color:"#8a6a1f"});
+  if(mid.best && mid.best.topZone!=null) markers.push({zone:mid.best.topZone, label:mid.best.code+" (mid)", color:"#b45309"});
+  if(twoStrike.best && twoStrike.best.topZone!=null) markers.push({zone:twoStrike.best.topZone, label:twoStrike.best.code+" (finish)", color});
   const grid = renderZoneGridHTML(markers);
+
+  const bucketTable = (title, r) => r.table.length ? `
+    <p class="note" style="font-weight:700;margin-top:12px">${title}</p>
+    <table><thead><tr><th>Pitch</th><th>N</th><th>Strike%</th><th>Whiff%</th><th>Hard%</th><th>Out%</th></tr></thead>
+    <tbody>${r.table.map(t=>`<tr${r.best && t.code===r.best.code?' style="color:'+color+';font-weight:700"':''}><td>${esc(t.code)}</td><td>${t.n}</td><td>${t.strikePct}%</td><td>${t.whiffPct}%</td><td>${t.hardPct==null?"—":t.hardPct+"%"}</td><td>${t.outPct==null?"—":t.outPct+"%"}</td></tr>`).join("")}</tbody></table>
+  ` : "";
+
   return `
     ${grid}
     <div style="margin-top:8px">
-      ${sa.stock? `<p class="note" style="margin:4px 0"><b>Establish:</b> ${esc(sa.stock.key)} — thrown most (n=${sa.stock.n}), typically ${esc(sa.stock.topLoc)}.</p>`:""}
-      ${sa.bestOut? `<p class="note" style="margin:4px 0"><b>Finish:</b> ${esc(sa.bestOut.key)} — ${sa.bestOut.outPct}% out rate (n=${sa.bestOut.n}), typically ${esc(sa.bestOut.topLoc)}.</p>`:""}
+      ${strike1.best? `<p class="note" style="margin:4px 0"><b>Strike 1, limit damage:</b> ${esc(strike1.best.code)} — ${strike1.best.strikePct}% strike rate${strike1.best.hardPct!=null?`, ${strike1.best.hardPct}% hard-hit on contact`:""}, typically ${esc(strike1.best.topZoneLabel)}.</p>` : ""}
+      ${mid.best? `<p class="note" style="margin:4px 0"><b>Mid-count, draw a swing:</b> ${esc(mid.best.code)} — ${mid.best.whiffPct}% whiff, typically ${esc(mid.best.topZoneLabel)}.</p>` : ""}
+      ${twoStrike.best? `<p class="note" style="margin:4px 0"><b>Two strikes, finish it:</b> ${esc(twoStrike.best.code)} — ${twoStrike.best.whiffPct}% whiff${twoStrike.best.outPct!=null?`, ${twoStrike.best.outPct}% out rate on contact`:""}, typically ${esc(twoStrike.best.topZoneLabel)}.</p>` : ""}
     </div>
+    ${bucketTable("Strike 1 options", strike1)}
+    ${bucketTable("Mid-count options", mid)}
+    ${bucketTable("Two-strike finish options", twoStrike)}
   `;
 }
 function handednessBlockHTML(sa){
@@ -337,8 +403,10 @@ function buildReportFromPayload(payload){
 
   const contact = battedBallProfile(allRows, codes);
   const twoStrikePaths = pathsToTwoStrikes(allPAs).filter(p=>p.n>=3).slice(0,6);
-  const seqVsL = sequenceAnalysis(allPAs.filter(pa=>pa.hand==="L"), 3);
-  const seqVsR = sequenceAnalysis(allPAs.filter(pa=>pa.hand==="R"), 3);
+  const pasVsL = allPAs.filter(pa=>pa.hand==="L");
+  const pasVsR = allPAs.filter(pa=>pa.hand==="R");
+  const seqVsL = sequenceAnalysis(pasVsL, 3);
+  const seqVsR = sequenceAnalysis(pasVsR, 3);
 
   const seq = {};
   allPAs.forEach(pa=>{
@@ -348,7 +416,7 @@ function buildReportFromPayload(payload){
       if(!seq[key]) seq[key] = {n:0, whiff:0, loc:{}};
       seq[key].n++;
       if(cur.res==="Whiff") seq[key].whiff++;
-      const lbl = zoneLabel(cur.zone);
+      const lbl = zoneLabel(cur.zone, cur.hand);
       seq[key].loc[lbl] = (seq[key].loc[lbl]||0) + 1;
     }
   });
@@ -417,12 +485,12 @@ function buildReportFromPayload(payload){
 
     <div class="section">
       <h2>Attack plan vs LHH</h2>
-      ${attackPlanBlockHTML(seqVsL, "#1d4ed8")}
+      ${attackPlanBlockHTML(pasVsL, "#1d4ed8")}
     </div>
 
     <div class="section">
       <h2>Attack plan vs RHH</h2>
-      ${attackPlanBlockHTML(seqVsR, "#8a3324")}
+      ${attackPlanBlockHTML(pasVsR, "#8a3324")}
     </div>
 
     <div class="section">
