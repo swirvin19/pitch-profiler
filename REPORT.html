@@ -143,13 +143,14 @@ function buildPAs(rows){
   const pas = [];
   let current = null, b=0, s=0;
   rows.forEach(r=>{
-    const p = {pitch:r.pitch, res:r.result, zone:r.zone, velo:r.velo, batter:r.batter, bip:r.bip_type, bipRes:r.bip_result};
+    const p = {pitch:r.pitch, res:r.result, zone:r.zone, velo:r.velo, batter:r.batter, hand:r.hand, bip:r.bip_type, bipRes:r.bip_result};
     if(current && p.batter !== current.batter){ current.outcome="incomplete"; pas.push(current); current=null; }
-    if(!current){ current = {batter:p.batter, pitches:[]}; b=0; s=0; }
+    if(!current){ current = {batter:p.batter, hand:p.hand, pitches:[]}; b=0; s=0; }
     p._sBefore=s;
     if(p.res==="Ball") b++;
     else if(p.res==="Called"||p.res==="Whiff") s++;
     else if(p.res==="Foul" && s<2) s++;
+    p._sAfter=s;
     current.pitches.push(p);
     const terminal = p.res==="InPlay"||p.res==="HBP"||s>=3||b>=4;
     if(terminal){ current.outcome = paOutcome(p,s,b); pas.push(current); current=null; }
@@ -165,6 +166,81 @@ function paOutcome(last, s, b){
   return "incomplete";
 }
 function isOutOutcome(o){ return o==="Out" || o==="DP" || o==="K (swinging)" || o==="K (looking)"; }
+function zoneLabel(z){
+  if(z==null) return "—";
+  const inner = {1:"Up-L",2:"Up-Mid",3:"Up-R",4:"Mid-L",5:"Heart",6:"Mid-R",7:"Low-L",8:"Low-Mid",9:"Low-R"};
+  const outer = {11:"Up-L chase",12:"Up-R chase",13:"Low-L chase",14:"Low-R chase"};
+  return inner[z] || outer[z] || "—";
+}
+function battedBallProfile(rows, codes){
+  return codes.map(code=>{
+    const bip = rows.filter(p=>p.pitch===code && p.result==="InPlay");
+    const type = t => bip.filter(p=>p.bip_type===t).length;
+    const gb=type("GB"), ld=type("LD"), fb=type("FB"), pu=type("PU");
+    const hard = bip.filter(p=>p.hard==="Y").length;
+    const outs = bip.filter(p=>p.bip_result==="Out"||p.bip_result==="DP").length;
+    return {
+      code, n:bip.length,
+      gbPct: bip.length?Math.round(gb/bip.length*100):null,
+      ldPct: bip.length?Math.round(ld/bip.length*100):null,
+      fbPct: bip.length?Math.round(fb/bip.length*100):null,
+      puPct: bip.length?Math.round(pu/bip.length*100):null,
+      hardPct: bip.length?Math.round(hard/bip.length*100):null,
+      outPct: bip.length?Math.round(outs/bip.length*100):null
+    };
+  }).filter(r=>r.n>0);
+}
+function pathsToTwoStrikes(pas){
+  const paths = {};
+  pas.forEach(pa=>{
+    let idx = -1;
+    for(let i=0;i<pa.pitches.length;i++){
+      if(pa.pitches[i]._sAfter===2 && pa.pitches[i]._sBefore<2){ idx = i; break; }
+    }
+    if(idx<0) return;
+    const path = pa.pitches.slice(0, idx+1).map(p=>p.pitch).join("-");
+    if(!paths[path]) paths[path] = {n:0, k:0, totalLen:0};
+    paths[path].n++;
+    paths[path].totalLen += pa.pitches.length;
+    if(pa.outcome==="K (swinging)" || pa.outcome==="K (looking)") paths[path].k++;
+  });
+  return Object.entries(paths).map(([path,v])=>({
+    path, n:v.n, kPct: Math.round(v.k/v.n*100), avgLen: (v.totalLen/v.n).toFixed(1)
+  })).sort((a,b)=>b.n-a.n);
+}
+function sequenceAnalysis(pas, minN){
+  const seq = {};
+  pas.forEach(pa=>{
+    for(let i=1;i<pa.pitches.length;i++){
+      const prev = pa.pitches[i-1].pitch, cur = pa.pitches[i];
+      const key = prev+" → "+cur.pitch;
+      if(!seq[key]) seq[key] = {n:0, whiff:0, loc:{}, outEnd:0};
+      seq[key].n++;
+      if(cur.res==="Whiff") seq[key].whiff++;
+      const lbl = zoneLabel(cur.zone);
+      seq[key].loc[lbl] = (seq[key].loc[lbl]||0) + 1;
+      const isLastPitch = (i === pa.pitches.length-1);
+      if(isLastPitch && isOutOutcome(pa.outcome)) seq[key].outEnd++;
+    }
+  });
+  const rows = Object.entries(seq).map(([k,v])=>{
+    const topLoc = Object.entries(v.loc).sort((a,b)=>b[1]-a[1])[0];
+    return {
+      key:k, n:v.n, whiffPct: Math.round(v.whiff/v.n*100), outPct: Math.round(v.outEnd/v.n*100),
+      topLoc: topLoc?topLoc[0]:"—", topLocPct: topLoc?Math.round(topLoc[1]/v.n*100):0
+    };
+  });
+  const qualified = rows.filter(r=>r.n>=minN).sort((a,b)=>b.n-a.n);
+  const stock = qualified.length ? qualified[0] : null;
+  const bestOut = qualified.length ? qualified.slice().sort((a,b)=>b.outPct-a.outPct)[0] : null;
+  return {stock, bestOut, all: qualified};
+}
+function handednessBlockHTML(sa){
+  if(!sa.all.length) return '<p class="note">Not enough same-handedness PAs logged yet.</p>';
+  const stockLine = sa.stock ? `<span class="badge">Stock: ${esc(sa.stock.key)} (n=${sa.stock.n})</span>` : "";
+  const outLine = sa.bestOut ? `<span class="badge">Best out-creator: ${esc(sa.bestOut.key)} (${sa.bestOut.outPct}% out rate, n=${sa.bestOut.n})</span>` : "";
+  return `<div class="badgebar" style="margin-bottom:10px">${stockLine}${outLine}</div>`;
+}
 
 let trendChart = null;
 function buildReportFromPayload(payload){
@@ -217,18 +293,29 @@ function buildReportFromPayload(payload){
     return {code, n:ps.length, pct: ps.length? Math.round(wh/ps.length*100):null};
   }).filter(r=>r.n>0).sort((a,b)=>b.pct-a.pct);
 
+  const contact = battedBallProfile(allRows, codes);
+  const twoStrikePaths = pathsToTwoStrikes(allPAs).filter(p=>p.n>=3).slice(0,6);
+  const seqVsL = sequenceAnalysis(allPAs.filter(pa=>pa.hand==="L"), 3);
+  const seqVsR = sequenceAnalysis(allPAs.filter(pa=>pa.hand==="R"), 3);
+
   const seq = {};
   allPAs.forEach(pa=>{
     for(let i=1;i<pa.pitches.length;i++){
       const prev = pa.pitches[i-1].pitch, cur = pa.pitches[i];
       const key = prev+" → "+cur.pitch;
-      if(!seq[key]) seq[key] = {n:0, whiff:0};
+      if(!seq[key]) seq[key] = {n:0, whiff:0, loc:{}};
       seq[key].n++;
       if(cur.res==="Whiff") seq[key].whiff++;
+      const lbl = zoneLabel(cur.zone);
+      seq[key].loc[lbl] = (seq[key].loc[lbl]||0) + 1;
     }
   });
   const bestSeq = Object.entries(seq).filter(([k,v])=>v.n>=4)
     .sort((a,b)=> (b[1].whiff/b[1].n)-(a[1].whiff/a[1].n)).slice(0,5);
+  bestSeq.forEach(([k,v])=>{
+    const topLoc = Object.entries(v.loc).sort((a,b)=>b[1]-a[1])[0];
+    v.topLoc = topLoc ? topLoc[0] : "—";
+  });
 
   const firstDate = outings[0].date, lastDate = outings[outings.length-1].date;
   const level = outings[outings.length-1].level || pitcher.level || "";
@@ -267,9 +354,33 @@ function buildReportFromPayload(payload){
     </div>
 
     <div class="section">
-      <h2>Signature sequences</h2>
-      ${bestSeq.length? `<div class="badgebar">${bestSeq.map(([k,v])=>`<span class="badge">${esc(k)} · ${Math.round(v.whiff/v.n*100)}% whiff (n=${v.n})</span>`).join("")}</div>`
+      <h2>Contact quality</h2>
+      ${contact.length? `<table><thead><tr><th>Pitch</th><th>BIP</th><th>GB%</th><th>LD%</th><th>FB%</th><th>PU%</th><th>Hard%</th><th>Out%</th></tr></thead>
+      <tbody>${contact.map(c=>`<tr><td>${esc(c.code)}</td><td>${c.n}</td><td>${c.gbPct}%</td><td>${c.ldPct}%</td><td>${c.fbPct}%</td><td>${c.puPct}%</td><td>${c.hardPct}%</td><td>${c.outPct}%</td></tr>`).join("")}</tbody></table>`
+      : '<p class="note">No balls in play logged yet.</p>'}
+    </div>
+
+    <div class="section">
+      <h2>Signature sequences &amp; location</h2>
+      ${bestSeq.length? `<div class="badgebar">${bestSeq.map(([k,v])=>`<span class="badge">${esc(k)} → ${esc(v.topLoc)} · ${Math.round(v.whiff/v.n*100)}% whiff (n=${v.n})</span>`).join("")}</div>`
       : '<p class="note">Not enough repeated sequences yet to surface a signature combo.</p>'}
+    </div>
+
+    <div class="section">
+      <h2>Paths to two strikes</h2>
+      ${twoStrikePaths.length? `<table><thead><tr><th>Path</th><th>N</th><th>K%</th><th>Avg PA length</th></tr></thead>
+      <tbody>${twoStrikePaths.map(p=>`<tr><td>${esc(p.path)}</td><td>${p.n}</td><td>${p.kPct}%</td><td>${p.avgLen}</td></tr>`).join("")}</tbody></table>`
+      : '<p class="note">Not enough PAs reached two strikes yet.</p>'}
+    </div>
+
+    <div class="section">
+      <h2>Vs. left-handed batters</h2>
+      ${handednessBlockHTML(seqVsL)}
+    </div>
+
+    <div class="section">
+      <h2>Vs. right-handed batters</h2>
+      ${handednessBlockHTML(seqVsR)}
     </div>
 
     <div class="section">
