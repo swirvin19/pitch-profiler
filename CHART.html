@@ -194,12 +194,19 @@ const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
     <div class="btnrow" style="margin-top:6px">
       <button class="sm" id="hL" onclick="setHand('L')" style="flex:0 0 42px">L</button>
       <button class="sm" id="hR" onclick="setHand('R')" style="flex:0 0 42px">R</button>
+      <button class="sm ghost" onclick="toggleBatterPicker()" style="flex:0 0 auto">Change batter</button>
     </div>
   </div>
   <div class="inn">
     <div class="v" id="sInn">1</div>
     <div class="k">Inning</div>
   </div>
+</div>
+
+<div class="card" id="batterPicker" style="display:none">
+  <p class="lab">Jump to batter</p>
+  <p class="note" style="margin-top:0">For anything that ends a PA or inning without a pitch result — caught stealing, pickoff, runner thrown out, etc. Tap whoever's actually up next; this doesn't touch anything already logged.</p>
+  <div class="btnrow" id="batterChips"></div>
 </div>
 
 <div class="card">
@@ -355,7 +362,7 @@ async function applySetup(){
   const existing = foundRows && foundRows[0];
   if(existing){
     S.outingId = existing.id;
-    await resumeFromServer();
+    await resumeFromServer(existing.current_order);
   } else {
     const { data: createdRows, error: createErr } = await sb.rpc("create_outing", {
       p_pitcher_id: S.pitcherId, p_date: S.date, p_opponent: S.opp, p_level: S.level, p_season: S.season, p_game_id: S.gid
@@ -369,7 +376,7 @@ async function applySetup(){
   setSync("ok","Synced");
   render();
 }
-async function resumeFromServer(){
+async function resumeFromServer(persistedOrder){
   const { data, error } = await sb.rpc("get_outing_pitches", {p_outing_id: S.outingId});
   if(error){ setSync("err","Couldn't resume: "+error.message); return; }
   S.pitches = []; S.order = 0;
@@ -392,8 +399,16 @@ async function resumeFromServer(){
     });
   });
   const last = S.pitches.slice(-1)[0];
-  S.order = last && isTerminal(last) ? idx+1 : idx;
+  // The persisted pointer is authoritative for skips a pitch trail can't reveal (e.g. a
+  // runner thrown out between batters), but never regress below what the pitch log itself
+  // proves happened — protects outings from before this pointer existed, which default to 0.
+  const inferredOrder = last && isTerminal(last) ? idx+1 : idx;
+  S.order = Math.max(persistedOrder||0, inferredOrder, 0);
   S.inning = last ? last.inn : 1;
+}
+async function persistOrder(){
+  if(!S.outingId) return;
+  try{ await sb.rpc("update_outing_order", {p_outing_id: S.outingId, p_order: S.order}); }catch(e){}
 }
 function v(id){ return document.getElementById(id).value; }
 function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
@@ -435,7 +450,7 @@ async function push(res, bip, bipRes, hard){
     seq: S.pitches.length
   };
   S.pitches.push(p);
-  if(isTerminal(p)) S.order++;
+  if(isTerminal(p)) { S.order++; persistOrder(); }
   S.sel.pitch = null; S.sel.zone = null;
   render();
 
@@ -451,7 +466,7 @@ async function push(res, bip, bipRes, hard){
 async function undo(){
   const last = S.pitches.pop();
   if(!last) return;
-  if(isTerminal(last)) S.order--;
+  if(isTerminal(last)) { S.order--; persistOrder(); }
   render();
   if(last.dbId){
     setSync("busy","Removing…");
@@ -474,7 +489,31 @@ async function setHand(h){
   setSync("ok","Synced");
 }
 function nextBatter(manual){
-  if(manual){ S.order++; render(); }
+  if(manual){ S.order++; persistOrder(); render(); }
+}
+function toggleBatterPicker(){
+  const box = document.getElementById("batterPicker");
+  const showing = box.style.display !== "none";
+  box.style.display = showing ? "none" : "block";
+  if(!showing) renderBatterPicker();
+}
+function renderBatterPicker(){
+  const n = S.lineup.length || 9;
+  const chips = [];
+  for(let i=0;i<n;i++){
+    const name = S.lineup.length ? S.lineup[i] : ("B"+(i+1));
+    const isCurrent = (S.order % n) === i;
+    chips.push(`<button class="sm${isCurrent?' sel':''}" onclick="jumpToBatter(${i})">${esc(name)}</button>`);
+  }
+  document.getElementById("batterChips").innerHTML = chips.join("");
+}
+function jumpToBatter(idx){
+  const n = S.lineup.length || 9;
+  const currentCycle = Math.floor(S.order / n);
+  S.order = currentCycle*n + idx;
+  document.getElementById("batterPicker").style.display = "none";
+  persistOrder();
+  render();
 }
 function flash(msg){ setSync("err", msg); setTimeout(()=>setSync("ok","Synced"), 1400); }
 
@@ -492,10 +531,30 @@ function renderSheet(){
   kbStage();
   const mk=(k,vals)=>vals.map(x=>
     `<button class="${bipPick[k]===x?'sel':''}" onclick="setBip('${k}','${x}')">${x}</button>`).join("");
+  const n = S.lineup.length || 9;
+  const battingChips = [];
+  for(let i=0;i<n;i++){
+    const name = S.lineup.length ? S.lineup[i] : ("B"+(i+1));
+    const isCurrent = (S.order % n) === i;
+    battingChips.push(`<button class="sm${isCurrent?' sel':''}" onclick="swapBatterInSheet(${i})">${esc(name)}</button>`);
+  }
   document.getElementById("bipBody").innerHTML =
-    `<p class="lab">Batted ball</p><div class="btnrow">${mk("type",["GB","LD","FB","PU"])}</div>
+    `<div class="card" style="background:var(--surf2);margin-bottom:12px;border-color:var(--accent)">
+       <p class="lab" style="margin-bottom:6px">Crediting this hit to</p>
+       <div style="font-family:'Chakra Petch',sans-serif;font-size:22px;font-weight:700;color:var(--accent);margin-bottom:8px">${esc(batterAt(S.order))}${handAt(S.order)?(" ("+handAt(S.order)+")"):""}</div>
+       <p class="note" style="margin:0 0 8px">Wrong batter? Tap the right one:</p>
+       <div class="btnrow">${battingChips.join("")}</div>
+     </div>
+     <p class="lab">Batted ball</p><div class="btnrow">${mk("type",["GB","LD","FB","PU"])}</div>
      <p class="lab">Result</p><div class="btnrow">${mk("result",["Out","DP","1B","2B","3B","HR","ROE"])}</div>
      <p class="lab">Hit hard?</p><div class="btnrow">${mk("hard",["Y","N"])}</div>`;
+}
+function swapBatterInSheet(idx){
+  const n = S.lineup.length || 9;
+  const currentCycle = Math.floor(S.order / n);
+  S.order = currentCycle*n + idx;
+  persistOrder();
+  renderSheet();
 }
 
 /* ---------- render ---------- */
@@ -507,6 +566,7 @@ function render(){
   const paInGame = S.order+1;
   document.getElementById("sMeta").textContent = `PA ${paInGame} · ${ordinal(ttoFor(S.order))} time through`;
   document.getElementById("sInn").textContent = S.inning;
+  if(document.getElementById("batterPicker").style.display !== "none") renderBatterPicker();
   const h = S.hands[batterAt(S.order)] || "";
   document.getElementById("hL").classList.toggle("sel", h==="L");
   document.getElementById("hR").classList.toggle("sel", h==="R");
