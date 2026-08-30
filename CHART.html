@@ -51,6 +51,7 @@ button:active{transform:scale(.97)}
 button.sel{background:var(--accent);border-color:var(--accent);color:#fff}
 button.sm{padding:8px 10px;font-size:13px;min-height:38px;flex:0 0 auto}
 button.ghost{background:transparent;color:var(--dim)}
+button.danger{background:transparent;color:var(--red);border-color:var(--red)}
 .pitchbtns button{flex:1 1 60px;font-family:'Chakra Petch',sans-serif;font-size:18px;font-weight:700;letter-spacing:.03em}
 .zone{display:grid;grid-template-columns:repeat(5,1fr);gap:3px;max-width:290px;margin:0 auto}
 .zc{aspect-ratio:1;border-radius:5px;border:1px solid var(--line);background:var(--surf2);
@@ -141,7 +142,8 @@ const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
     </label>
     <label><small>New pitcher name</small><input id="fPidNew" placeholder="Type to add new"></label>
   </div>
-  <div class="grid2">
+  <div id="recentGamesBox" style="margin-top:10px"></div>
+  <div class="grid2" style="margin-top:12px">
     <label><small>Date</small><input id="fDate" type="date"></label>
     <label><small>Level</small>
       <select id="fLevel"><option>MLB</option><option selected>AAA</option><option>AA</option>
@@ -276,6 +278,18 @@ const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
   </div>
 </div>
 
+<div class="sheet" id="editSheet">
+  <div class="sheetin">
+    <h3>Edit pitch</h3>
+    <div id="editBody"></div>
+    <div class="btnrow" style="margin-top:18px">
+      <button class="danger" onclick="deleteEditedPitch()">Delete</button>
+      <button class="ghost" onclick="closeEditSheet()">Cancel</button>
+      <button onclick="saveEditedPitch()" style="background:#ff2140;border-color:#ff2140;color:#fff">Save</button>
+    </div>
+  </div>
+</div>
+
 <script>
 const RES_STRIKE = {Ball:0, Called:1, Whiff:1, Foul:1, InPlay:1, HBP:0};
 let sb = null;
@@ -317,10 +331,37 @@ async function loadPitchers(){
   sel.innerHTML = '<option value="">— select —</option>' +
     pitchers.map(p=>`<option value="${p.id}">${esc(p.name)} (${esc(p.level||"")})</option>`).join("");
 }
-function onPitcherSelect(){
+async function onPitcherSelect(){
   const id = document.getElementById("fPidSelect").value;
   const p = pitchers.find(x=>x.id===id);
   if(p){ document.getElementById("fPidNew").value = ""; }
+  await loadRecentGames(id);
+}
+async function loadRecentGames(pitcherId){
+  const box = document.getElementById("recentGamesBox");
+  if(!pitcherId){ box.innerHTML = ""; return; }
+  box.innerHTML = '<p class="note">Loading recent games…</p>';
+  const { data, error } = await sb.rpc("get_pitcher_outings", {p_pitcher_id: pitcherId});
+  if(error){ box.innerHTML = `<p class="note" style="color:var(--red)">Couldn't load recent games: ${esc(error.message)}</p>`; return; }
+  const outings = (data||[]).slice().sort((a,b)=> a.date<b.date?1:-1).slice(0,8);
+  if(!outings.length){ box.innerHTML = '<p class="note">No previous games for this pitcher yet.</p>'; return; }
+  box.innerHTML = `<p class="lab" style="margin-bottom:6px">Load a previous game</p>` +
+    outings.map(o=>`<button class="sm" style="margin:0 4px 4px 0" onclick='loadGame(${JSON.stringify(o.game_id)})'>${esc(o.date)} vs ${esc(o.opponent||"")}</button>`).join("");
+}
+async function loadGame(gid){
+  document.getElementById("fGid").value = gid;
+  const parts = gid.split(" ");
+  // game_id format is "<pitcher name> <date> <opponent>" when auto-generated — but since the
+  // real lookup is by game_id alone, we don't need to guess the other fields; applySetup
+  // will pull everything from the matched outing once resumeFromServer runs.
+  const { data, error } = await sb.rpc("find_outing", {p_game_id: gid});
+  if(error || !data || !data[0]){ setSync("err","Couldn't find that game."); return; }
+  const o = data[0];
+  document.getElementById("fDate").value = o.date;
+  document.getElementById("fOpp").value = o.opponent || "";
+  document.getElementById("fLevel").value = o.level || "AAA";
+  document.getElementById("fSeason").value = o.season || S.season || new Date().getFullYear();
+  await applySetup();
 }
 
 async function getOrCreatePitcher(){
@@ -557,6 +598,79 @@ function swapBatterInSheet(idx){
   renderSheet();
 }
 
+/* ---------- edit any past pitch ---------- */
+let editPick = {};
+let editingPitchId = null;
+function openEditPitch(dbId){
+  const p = S.pitches.find(x=>x.dbId===dbId);
+  if(!p) return;
+  editingPitchId = dbId;
+  editPick = {
+    batter: p.batter, hand: p.hand||"", pitch: p.pitch, velo: p.velo, zone: p.zone,
+    res: p.res, bip: p.bip, bipRes: p.bipRes, hard: p.hard
+  };
+  document.getElementById("editSheet").classList.add("on");
+  renderEditSheet();
+}
+function closeEditSheet(){ document.getElementById("editSheet").classList.remove("on"); editingPitchId = null; }
+function setEdit(k, val){ editPick[k] = val; renderEditSheet(); }
+function renderEditSheet(){
+  const mk=(k,vals)=>vals.map(x=>
+    `<button class="${editPick[k]===x?'sel':''}" onclick="setEdit('${k}','${x}')">${x}</button>`).join("");
+  const n = S.lineup.length || 9;
+  const battingChips = [];
+  for(let i=0;i<n;i++){
+    const name = S.lineup.length ? S.lineup[i] : ("B"+(i+1));
+    battingChips.push(`<button class="sm${editPick.batter===name?' sel':''}" onclick="setEdit('batter','${esc(name).replace(/'/g,"\\'")}')">${esc(name)}</button>`);
+  }
+  const isInPlay = editPick.res === "InPlay";
+  document.getElementById("editBody").innerHTML = `
+    <p class="lab">Batter</p><div class="btnrow">${battingChips.join("")}</div>
+    <p class="lab" style="margin-top:12px">Hand</p><div class="btnrow">${mk("hand",["L","R"])}</div>
+    <p class="lab" style="margin-top:12px">Pitch</p><div class="btnrow">${mk("pitch", S.arsenal)}</div>
+    <div class="grid2" style="margin-top:12px">
+      <label><small>Velo</small><input id="editVelo" inputmode="decimal" value="${editPick.velo||""}" onchange="editPick.velo=this.value?+this.value:null"></label>
+      <label><small>Zone (1-9 in, 11-14 corners)</small><input id="editZone" inputmode="numeric" value="${editPick.zone!=null?editPick.zone:""}" onchange="editPick.zone=this.value?+this.value:null"></label>
+    </div>
+    <p class="lab" style="margin-top:12px">Result</p><div class="btnrow">${mk("res",["Ball","Called","Whiff","Foul","InPlay","HBP"])}</div>
+    ${isInPlay ? `
+      <p class="lab" style="margin-top:12px">Batted ball</p><div class="btnrow">${mk("bip",["GB","LD","FB","PU"])}</div>
+      <p class="lab" style="margin-top:12px">Result</p><div class="btnrow">${mk("bipRes",["Out","DP","1B","2B","3B","HR","ROE"])}</div>
+      <p class="lab" style="margin-top:12px">Hit hard?</p><div class="btnrow">${mk("hard",["Y","N"])}</div>
+    ` : ""}
+    <p class="note">Editing a pitch that changes an at-bat's outcome (e.g. Ball → In play) can shift who's credited with everything after it in this game. After saving, the whole outing reloads fresh from the database to keep counts and batter order correct.</p>
+  `;
+}
+async function saveEditedPitch(){
+  if(!editingPitchId) return;
+  setSync("busy","Saving…");
+  const { error } = await sb.rpc("update_pitch", {
+    p_id: editingPitchId, p_batter: editPick.batter, p_hand: editPick.hand||null,
+    p_pitch: editPick.pitch, p_velo: editPick.velo, p_zone: editPick.zone,
+    p_result: editPick.res, p_bip_type: editPick.res==="InPlay"?editPick.bip:null,
+    p_bip_result: editPick.res==="InPlay"?editPick.bipRes:null, p_hard: editPick.res==="InPlay"?editPick.hard:null
+  });
+  if(error){ setSync("err","Save failed: "+error.message); return; }
+  closeEditSheet();
+  await reloadCurrentOuting();
+}
+async function deleteEditedPitch(){
+  if(!editingPitchId) return;
+  if(!confirm("Delete this pitch? This can't be undone.")) return;
+  setSync("busy","Deleting…");
+  const { error } = await sb.rpc("delete_pitch", {p_id: editingPitchId});
+  if(error){ setSync("err","Delete failed: "+error.message); return; }
+  closeEditSheet();
+  await reloadCurrentOuting();
+}
+async function reloadCurrentOuting(){
+  const { data, error } = await sb.rpc("find_outing", {p_game_id: S.gid});
+  if(error || !data || !data[0]){ setSync("err","Reload failed."); return; }
+  await resumeFromServer(data[0].current_order);
+  render();
+  setSync("ok","Synced");
+}
+
 /* ---------- render ---------- */
 function ordinal(n){ const s=["th","st","nd","rd"], v=n%100; return n+(s[(v-20)%10]||s[v]||s[0]); }
 function render(){
@@ -596,7 +710,8 @@ function render(){
   document.getElementById("logBox").innerHTML = S.pitches.slice().reverse().slice(0,40).map(p=>{
     const zlab = p.zone!=null ? p.zone : "—";
     const cnt = p.bBefore+"-"+p.sBefore;
-    return `<div class="lrow"><div class="i">${p.inn}</div><div class="p">${p.pitch}${p.velo?(" "+p.velo):""}</div>
+    const tapAttr = p.dbId ? ` onclick="openEditPitch(${p.dbId})" style="cursor:pointer"` : "";
+    return `<div class="lrow"${tapAttr}><div class="i">${p.inn}</div><div class="p">${p.pitch}${p.velo?(" "+p.velo):""}</div>
       <div class="z">z${zlab}</div><div class="c">${p.batter} ${cnt}</div><div class="c">${p.res}${p.bipRes?(" "+p.bipRes):""}</div></div>`;
   }).join("");
 
