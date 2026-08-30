@@ -168,9 +168,34 @@ function paOutcome(last, s, b){
 function isOutOutcome(o){ return o==="Out" || o==="DP" || o==="K (swinging)" || o==="K (looking)"; }
 function zoneLabel(z){
   if(z==null) return "—";
-  const inner = {1:"Up-L",2:"Up-Mid",3:"Up-R",4:"Mid-L",5:"Heart",6:"Mid-R",7:"Low-L",8:"Low-Mid",9:"Low-R"};
-  const outer = {11:"Up-L chase",12:"Up-R chase",13:"Low-L chase",14:"Low-R chase"};
+  const inner = {1:"Up-R",2:"Up-Mid",3:"Up-L",4:"Mid-R",5:"Heart",6:"Mid-L",7:"Low-R",8:"Low-Mid",9:"Low-L"};
+  const outer = {11:"Up-R chase",12:"Up-L chase",13:"Low-R chase",14:"Low-L chase"};
   return inner[z] || outer[z] || "—";
+}
+function zoneGridPos(z){
+  const pos = {
+    1:{row:1,col:3}, 2:{row:1,col:2}, 3:{row:1,col:1},
+    4:{row:2,col:3}, 5:{row:2,col:2}, 6:{row:2,col:1},
+    7:{row:3,col:3}, 8:{row:3,col:2}, 9:{row:3,col:1},
+    11:{row:0,col:4}, 12:{row:0,col:0}, 13:{row:4,col:4}, 14:{row:4,col:0}
+  };
+  return pos[z] || null;
+}
+function renderZoneGridHTML(markers){
+  let cells = "";
+  for(let r=0;r<5;r++){
+    for(let c=0;c<5;c++){
+      const inZone = r>=1 && r<=3 && c>=1 && c<=3;
+      const here = markers.filter(m=>{ const p=zoneGridPos(m.zone); return p && p.row===r && p.col===c; });
+      let content = "";
+      if(here.length){
+        content = here.map(m=>`<div style="background:${m.color};color:#fff;border-radius:5px;padding:2px 5px;font-size:10px;font-weight:700;font-family:'JetBrains Mono',monospace;margin:1px;white-space:nowrap">${esc(m.label)}</div>`).join("");
+      }
+      cells += `<div style="aspect-ratio:1;border:1px solid ${inZone?'#8a6a1f':'#c9a86a55'};background:${inZone?'#ece0c4':'#f4ead4'};display:flex;align-items:center;justify-content:center;flex-wrap:wrap;border-radius:4px">${content}</div>`;
+    }
+  }
+  return `<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:3px;max-width:280px;margin:8px auto 4px">${cells}</div>
+    <p class="note" style="text-align:center">Pitcher's-eye view · center box is the strike zone</p>`;
 }
 function battedBallProfile(rows, codes){
   return codes.map(code=>{
@@ -214,26 +239,43 @@ function sequenceAnalysis(pas, minN){
     for(let i=1;i<pa.pitches.length;i++){
       const prev = pa.pitches[i-1].pitch, cur = pa.pitches[i];
       const key = prev+" → "+cur.pitch;
-      if(!seq[key]) seq[key] = {n:0, whiff:0, loc:{}, outEnd:0};
+      if(!seq[key]) seq[key] = {n:0, whiff:0, loc:{}, locZone:{}, outEnd:0, endPitch:cur.pitch};
       seq[key].n++;
       if(cur.res==="Whiff") seq[key].whiff++;
       const lbl = zoneLabel(cur.zone);
       seq[key].loc[lbl] = (seq[key].loc[lbl]||0) + 1;
+      if(cur.zone!=null) seq[key].locZone[cur.zone] = (seq[key].locZone[cur.zone]||0) + 1;
       const isLastPitch = (i === pa.pitches.length-1);
       if(isLastPitch && isOutOutcome(pa.outcome)) seq[key].outEnd++;
     }
   });
   const rows = Object.entries(seq).map(([k,v])=>{
     const topLoc = Object.entries(v.loc).sort((a,b)=>b[1]-a[1])[0];
+    const topLocZone = Object.entries(v.locZone).sort((a,b)=>b[1]-a[1])[0];
     return {
       key:k, n:v.n, whiffPct: Math.round(v.whiff/v.n*100), outPct: Math.round(v.outEnd/v.n*100),
-      topLoc: topLoc?topLoc[0]:"—", topLocPct: topLoc?Math.round(topLoc[1]/v.n*100):0
+      topLoc: topLoc?topLoc[0]:"—", topLocPct: topLoc?Math.round(topLoc[1]/v.n*100):0,
+      topLocZone: topLocZone?+topLocZone[0]:null, endPitch: v.endPitch
     };
   });
   const qualified = rows.filter(r=>r.n>=minN).sort((a,b)=>b.n-a.n);
   const stock = qualified.length ? qualified[0] : null;
   const bestOut = qualified.length ? qualified.slice().sort((a,b)=>b.outPct-a.outPct)[0] : null;
   return {stock, bestOut, all: qualified};
+}
+function attackPlanBlockHTML(sa, color){
+  if(!sa.all.length) return '<p class="note">Not enough same-handedness data logged yet to build a plan.</p>';
+  const markers = [];
+  if(sa.stock && sa.stock.topLocZone!=null) markers.push({zone:sa.stock.topLocZone, label:sa.stock.endPitch+" (stock)", color:"#8a6a1f"});
+  if(sa.bestOut && sa.bestOut.topLocZone!=null) markers.push({zone:sa.bestOut.topLocZone, label:sa.bestOut.endPitch+" (out)", color});
+  const grid = renderZoneGridHTML(markers);
+  return `
+    ${grid}
+    <div style="margin-top:8px">
+      ${sa.stock? `<p class="note" style="margin:4px 0"><b>Establish:</b> ${esc(sa.stock.key)} — thrown most (n=${sa.stock.n}), typically ${esc(sa.stock.topLoc)}.</p>`:""}
+      ${sa.bestOut? `<p class="note" style="margin:4px 0"><b>Finish:</b> ${esc(sa.bestOut.key)} — ${sa.bestOut.outPct}% out rate (n=${sa.bestOut.n}), typically ${esc(sa.bestOut.topLoc)}.</p>`:""}
+    </div>
+  `;
 }
 function handednessBlockHTML(sa){
   if(!sa.all.length) return '<p class="note">Not enough same-handedness PAs logged yet.</p>';
@@ -374,13 +416,13 @@ function buildReportFromPayload(payload){
     </div>
 
     <div class="section">
-      <h2>Vs. left-handed batters</h2>
-      ${handednessBlockHTML(seqVsL)}
+      <h2>Attack plan vs LHH</h2>
+      ${attackPlanBlockHTML(seqVsL, "#1d4ed8")}
     </div>
 
     <div class="section">
-      <h2>Vs. right-handed batters</h2>
-      ${handednessBlockHTML(seqVsR)}
+      <h2>Attack plan vs RHH</h2>
+      ${attackPlanBlockHTML(seqVsR, "#8a3324")}
     </div>
 
     <div class="section">

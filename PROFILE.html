@@ -77,6 +77,8 @@ const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 <div class="tabs">
   <button class="on" onclick="showTab('outings')">Outings</button>
   <button onclick="showTab('profile')">Profile</button>
+  <button onclick="showTab('hitters')">Hitters</button>
+  <button onclick="showTab('plan')">Attack Plan</button>
 </div>
 
 <div class="tab on" id="tab-outings">
@@ -89,6 +91,18 @@ const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 
 <div class="tab" id="tab-profile">
   <div id="profileBody"><p class="empty">Pick a pitcher to see their profile.</p></div>
+</div>
+
+<div class="tab" id="tab-hitters">
+  <div class="card">
+    <p class="lab">Hitter</p>
+    <select id="hitterPicker" onchange="renderHitterDetail()"></select>
+  </div>
+  <div id="hittersBody"><p class="empty">Pick a pitcher to see hitters faced.</p></div>
+</div>
+
+<div class="tab" id="tab-plan">
+  <div id="planBody"><p class="empty">Pick a pitcher to see their attack plan.</p></div>
 </div>
 
 </div>
@@ -187,6 +201,8 @@ function showTab(name){
   document.getElementById("tab-"+name).classList.add("on");
   event.target.classList.add("on");
   if(name==="profile") renderProfile();
+  if(name==="hitters") renderHitters();
+  if(name==="plan") renderPlan();
 }
 
 /* ---------- PA reconstruction (mirrors CHART.html's live-count logic) ---------- */
@@ -220,11 +236,42 @@ function isOutOutcome(o){ return o==="Out" || o==="DP" || o==="K (swinging)" || 
 
 /* Catcher's-view location label for a zone code. Vertical/horizontal only —
    no in/away claim, since that depends on pitcher handedness which isn't tracked. */
+/* Pitches are charted in catcher's-view (that's the correct frame while watching video).
+   Everything here flips left/right so it reads from the PITCHER's own perspective instead —
+   the frame that actually matters for "where do I need to locate this." */
 function zoneLabel(z){
   if(z==null) return "—";
-  const inner = {1:"Up-L",2:"Up-Mid",3:"Up-R",4:"Mid-L",5:"Heart",6:"Mid-R",7:"Low-L",8:"Low-Mid",9:"Low-R"};
-  const outer = {11:"Up-L chase",12:"Up-R chase",13:"Low-L chase",14:"Low-R chase"};
+  const inner = {1:"Up-R",2:"Up-Mid",3:"Up-L",4:"Mid-R",5:"Heart",6:"Mid-L",7:"Low-R",8:"Low-Mid",9:"Low-L"};
+  const outer = {11:"Up-R chase",12:"Up-L chase",13:"Low-R chase",14:"Low-L chase"};
   return inner[z] || outer[z] || "—";
+}
+/* Grid position (0-4 row/col) for a zone code, already mirrored to pitcher's perspective. */
+function zoneGridPos(z){
+  const pos = {
+    1:{row:1,col:3}, 2:{row:1,col:2}, 3:{row:1,col:1},
+    4:{row:2,col:3}, 5:{row:2,col:2}, 6:{row:2,col:1},
+    7:{row:3,col:3}, 8:{row:3,col:2}, 9:{row:3,col:1},
+    11:{row:0,col:4}, 12:{row:0,col:0}, 13:{row:4,col:4}, 14:{row:4,col:0}
+  };
+  return pos[z] || null;
+}
+/* Renders a static 5x5 target grid (pitcher's perspective) with labeled markers.
+   markers: [{zone, label, color}] */
+function renderZoneGridHTML(markers){
+  let cells = "";
+  for(let r=0;r<5;r++){
+    for(let c=0;c<5;c++){
+      const inZone = r>=1 && r<=3 && c>=1 && c<=3;
+      const here = markers.filter(m=>{ const p=zoneGridPos(m.zone); return p && p.row===r && p.col===c; });
+      let content = "";
+      if(here.length){
+        content = here.map(m=>`<div style="background:${m.color};color:#fff;border-radius:5px;padding:2px 5px;font-size:10px;font-weight:700;font-family:'JetBrains Mono',monospace;margin:1px;white-space:nowrap">${esc(m.label)}</div>`).join("");
+      }
+      cells += `<div style="aspect-ratio:1;border:1px solid ${inZone?'#3a5680':'#2c405f'};background:${inZone?'#1e2e49':'#16233a'};display:flex;align-items:center;justify-content:center;flex-wrap:wrap;border-radius:4px">${content}</div>`;
+    }
+  }
+  return `<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:3px;max-width:280px;margin:8px auto 4px">${cells}</div>
+    <p class="note" style="text-align:center">Pitcher's-eye view · center box is the strike zone</p>`;
 }
 
 /* Batted-ball profile per pitch: GB/LD/FB/PU rates and hard-hit rate among balls in play. */
@@ -276,20 +323,23 @@ function sequenceAnalysis(pas, minN){
     for(let i=1;i<pa.pitches.length;i++){
       const prev = pa.pitches[i-1].pitch, cur = pa.pitches[i];
       const key = prev+" → "+cur.pitch;
-      if(!seq[key]) seq[key] = {n:0, whiff:0, loc:{}, outEnd:0};
+      if(!seq[key]) seq[key] = {n:0, whiff:0, loc:{}, locZone:{}, outEnd:0, endPitch:cur.pitch};
       seq[key].n++;
       if(cur.res==="Whiff") seq[key].whiff++;
       const lbl = zoneLabel(cur.zone);
       seq[key].loc[lbl] = (seq[key].loc[lbl]||0) + 1;
+      if(cur.zone!=null) seq[key].locZone[cur.zone] = (seq[key].locZone[cur.zone]||0) + 1;
       const isLastPitch = (i === pa.pitches.length-1);
       if(isLastPitch && isOutOutcome(pa.outcome)) seq[key].outEnd++;
     }
   });
   const rows = Object.entries(seq).map(([k,v])=>{
     const topLoc = Object.entries(v.loc).sort((a,b)=>b[1]-a[1])[0];
+    const topLocZone = Object.entries(v.locZone).sort((a,b)=>b[1]-a[1])[0];
     return {
       key:k, n:v.n, whiffPct: Math.round(v.whiff/v.n*100), outPct: Math.round(v.outEnd/v.n*100),
-      topLoc: topLoc?topLoc[0]:"—", topLocPct: topLoc?Math.round(topLoc[1]/v.n*100):0
+      topLoc: topLoc?topLoc[0]:"—", topLocPct: topLoc?Math.round(topLoc[1]/v.n*100):0,
+      topLocZone: topLocZone?+topLocZone[0]:null, endPitch: v.endPitch
     };
   });
   const qualified = rows.filter(r=>r.n>=minN).sort((a,b)=>b.n-a.n);
@@ -518,6 +568,116 @@ function handednessBlockHTML(sa){
     <tbody>${rows.map(r=>`<tr><td>${esc(r.key)}</td><td>${r.n}</td><td>${r.whiffPct}%</td><td>${r.outPct}%</td><td>${esc(r.topLoc)} (${r.topLocPct}%)</td></tr>`).join("")}</tbody></table>
   `;
 }
+
+/* ---------- hitters ---------- */
+let HITTER_DATA = {};
+function renderHitters(){
+  const body = document.getElementById("hittersBody");
+  const sel = document.getElementById("hitterPicker");
+  if(!outings.length){
+    body.innerHTML = '<p class="empty">No outings for this pitcher yet.</p>';
+    sel.innerHTML = "";
+    return;
+  }
+  let allPAs = [];
+  outings.forEach(o=> allPAs = allPAs.concat(buildPAs(CACHE[o.id]||[])));
+
+  HITTER_DATA = {};
+  allPAs.forEach(pa=>{
+    const raw = (pa.batter||"").trim();
+    if(!raw) return;
+    const key = raw.toLowerCase();
+    if(!HITTER_DATA[key]) HITTER_DATA[key] = {display: raw, hand: pa.hand||"", pas: []};
+    HITTER_DATA[key].pas.push(pa);
+  });
+
+  const keys = Object.keys(HITTER_DATA).sort((a,b)=> HITTER_DATA[b].pas.length - HITTER_DATA[a].pas.length);
+  if(!keys.length){
+    body.innerHTML = "<p class=\"empty\">No named hitters logged yet — batter names come from the lineup you enter in CHART.html (generic B1–B9 names won't carry across outings).</p>";
+    sel.innerHTML = "";
+    return;
+  }
+  sel.innerHTML = keys.map(k=>`<option value="${esc(k)}">${esc(HITTER_DATA[k].display)} (${HITTER_DATA[k].pas.length} PA)</option>`).join("");
+  renderHitterDetail();
+}
+function renderHitterDetail(){
+  const body = document.getElementById("hittersBody");
+  const sel = document.getElementById("hitterPicker");
+  const key = sel.value;
+  const h = HITTER_DATA[key];
+  if(!h){ body.innerHTML = '<p class="empty">No named hitters logged yet.</p>'; return; }
+  const pas = h.pas;
+
+  const outcomeTally = {};
+  pas.forEach(pa=>{ outcomeTally[pa.outcome]=(outcomeTally[pa.outcome]||0)+1; });
+  const kCount = pas.filter(pa=>pa.outcome==="K (swinging)"||pa.outcome==="K (looking)").length;
+  const bbCount = pas.filter(pa=>pa.outcome==="BB").length;
+  const hitCount = pas.filter(pa=>["1B","2B","3B","HR"].includes(pa.outcome)).length;
+  const outCount = pas.filter(pa=>isOutOutcome(pa.outcome)).length;
+
+  const allPitchesVs = [];
+  pas.forEach(pa=>pa.pitches.forEach(p=>allPitchesVs.push(p)));
+  const codes = [...new Set(allPitchesVs.map(p=>p.pitch))];
+  const usage = codes.map(code=>{
+    const ps = allPitchesVs.filter(p=>p.pitch===code);
+    const inZone = ps.filter(p=>p.zone>=1&&p.zone<=9).length;
+    const swings = ps.filter(p=>["Whiff","Foul","InPlay"].includes(p.res)).length;
+    const whiffs = ps.filter(p=>p.res==="Whiff").length;
+    return {code, n:ps.length, zonePct: ps.length?Math.round(inZone/ps.length*100):0,
+      whiffPct: swings? Math.round(whiffs/swings*100):null};
+  }).sort((a,b)=>b.n-a.n);
+
+  const sa = sequenceAnalysis(pas, 2);
+
+  body.innerHTML = `
+    <div class="card"><p class="lab">${esc(h.display)}${h.hand?` (${esc(h.hand)}HB)`:""}</p>
+      <div class="sgrid">
+        <div class="sbox"><div class="v">${pas.length}</div><div class="k">PA faced</div></div>
+        <div class="sbox"><div class="v">${kCount}</div><div class="k">Strikeouts</div></div>
+        <div class="sbox"><div class="v">${outCount}</div><div class="k">Outs</div></div>
+        <div class="sbox"><div class="v">${hitCount}</div><div class="k">Hits allowed</div></div>
+      </div>
+      <div style="margin-top:10px">${Object.entries(outcomeTally).map(([k,v])=>`<span class="pill">${esc(k)}: ${v}</span>`).join("")}</div>
+    </div>
+    <div class="card"><p class="lab">Pitch usage vs ${esc(h.display)}</p>
+      ${usage.length? `<table><thead><tr><th>Pitch</th><th>N</th><th>Zone%</th><th>Whiff%</th></tr></thead>
+      <tbody>${usage.map(u=>`<tr><td class="pcode">${esc(u.code)}</td><td>${u.n}</td><td>${u.zonePct}%</td><td>${u.whiffPct==null?"—":u.whiffPct+"%"}</td></tr>`).join("")}</tbody></table>`
+      : '<p class="empty">No pitch data.</p>'}</div>
+    <div class="card"><p class="lab">What's worked against ${esc(h.display)} (min. 2 uses)</p>${handednessBlockHTML(sa)}</div>
+  `;
+}
+
+/* ---------- attack plan ---------- */
+function renderPlan(){
+  const body = document.getElementById("planBody");
+  if(!outings.length){ body.innerHTML = '<p class="empty">No outings for this pitcher yet.</p>'; return; }
+  let allPAs = [];
+  outings.forEach(o=> allPAs = allPAs.concat(buildPAs(CACHE[o.id]||[])));
+
+  const planL = sequenceAnalysis(allPAs.filter(pa=>pa.hand==="L"), 2);
+  const planR = sequenceAnalysis(allPAs.filter(pa=>pa.hand==="R"), 2);
+
+  body.innerHTML = `
+    <div class="card"><p class="lab">Attack plan vs LHH</p>${attackPlanBlockHTML(planL, "#3d8fd1")}</div>
+    <div class="card"><p class="lab">Attack plan vs RHH</p>${attackPlanBlockHTML(planR, "#e0483d")}</div>
+    <p class="note">All locations here are shown from the pitcher's own eye line, not the catcher's — this flips left/right from how you charted it on video, since that's the frame that actually matters for execution. Small samples (early season, few hitters of one hand faced) will look thin — this fills in and sharpens as more outings get logged.</p>
+  `;
+}
+function attackPlanBlockHTML(sa, color){
+  if(!sa.all.length) return '<p class="empty">Not enough same-handedness data logged yet to build a plan.</p>';
+  const markers = [];
+  if(sa.stock && sa.stock.topLocZone!=null) markers.push({zone:sa.stock.topLocZone, label:sa.stock.endPitch+" (stock)", color:"#5d7a9c"});
+  if(sa.bestOut && sa.bestOut.topLocZone!=null) markers.push({zone:sa.bestOut.topLocZone, label:sa.bestOut.endPitch+" (out)", color});
+  const grid = renderZoneGridHTML(markers);
+  return `
+    ${grid}
+    <div style="margin-top:8px">
+      ${sa.stock? `<p style="margin:4px 0"><b>Establish:</b> ${esc(sa.stock.key)} — thrown most (n=${sa.stock.n}), typically ${esc(sa.stock.topLoc)}.</p>`:""}
+      ${sa.bestOut? `<p style="margin:4px 0"><b>Finish:</b> ${esc(sa.bestOut.key)} — ${sa.bestOut.outPct}% out rate (n=${sa.bestOut.n}), typically ${esc(sa.bestOut.topLoc)}.</p>`:""}
+    </div>
+  `;
+}
+
 function drawTrend(){
   const sel = document.getElementById("trendPitch");
   const metricSel = document.getElementById("trendMetric");
