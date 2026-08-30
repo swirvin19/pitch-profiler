@@ -69,6 +69,9 @@ const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
   <p class="lab">Pitcher</p>
   <select id="pitcherPicker" onchange="onPitcherChange()"></select>
   <div id="shareLinkBox" style="margin-top:10px"></div>
+  <button id="deletePitcherBtn" onclick="deletePitcher()" style="margin-top:10px;width:100%;background:#341417;border-color:#e0483d;color:#f0a3a0;display:none">
+    Delete this pitcher &amp; all their data
+  </button>
 </div>
 
 <div class="tabs">
@@ -135,6 +138,7 @@ function renderShareLink(){
 
 async function onPitcherChange(){
   currentPitcherId = document.getElementById("pitcherPicker").value;
+  document.getElementById("deletePitcherBtn").style.display = currentPitcherId ? "block" : "none";
   if(!currentPitcherId){ outings=[]; renderOutingPicker(); renderShareLink(); return; }
   setSync("busy","Loading outings…");
   const { data, error } = await sb.rpc("get_pitcher_outings", {p_pitcher_id: currentPitcherId});
@@ -150,6 +154,26 @@ async function onPitcherChange(){
   renderOuting();
   renderProfile();
   renderShareLink();
+}
+
+async function deletePitcher(){
+  const p = pitchers.find(x=>x.id===currentPitcherId);
+  if(!p) return;
+  const typed = prompt(`This permanently deletes ${p.name} and every outing, pitch, and report you've logged for them. This cannot be undone.\n\nType the pitcher's name exactly to confirm:`);
+  if(typed === null) return;
+  if(typed.trim() !== p.name){ alert("Name didn't match — nothing was deleted."); return; }
+  setSync("busy","Deleting…");
+  const { error } = await sb.rpc("delete_pitcher", {p_id: p.id});
+  if(error){ setSync("err","Delete failed: "+error.message); return; }
+  pitchers = pitchers.filter(x=>x.id!==p.id);
+  document.getElementById("pitcherPicker").innerHTML =
+    '<option value="">— select a pitcher —</option>' +
+    pitchers.map(x=>`<option value="${x.id}">${esc(x.name)}</option>`).join("");
+  currentPitcherId = null;
+  outings = []; CACHE = {};
+  document.getElementById("deletePitcherBtn").style.display = "none";
+  renderOutingPicker(); renderOuting(); renderProfile(); renderShareLink();
+  setSync("ok", `${p.name} deleted.`);
 }
 
 function renderOutingPicker(){
