@@ -136,9 +136,9 @@ function buildPAs(rows){
   const pas = [];
   let current = null, b=0, s=0;
   rows.forEach(r=>{
-    const p = {pitch:r.pitch, res:r.result, zone:r.zone, velo:r.velo, batter:r.batter, hand:r.hand, bip:r.bip_type, bipRes:r.bip_result, hard:r.hard};
-    if(current && p.batter !== current.batter){ current.outcome="incomplete"; pas.push(current); current=null; }
-    if(!current){ current = {batter:p.batter, hand:p.hand, pitches:[]}; b=0; s=0; }
+    const p = {pitch:r.pitch, res:r.result, zone:r.zone, velo:r.velo, batter:r.batter, hand:r.hand, bip:r.bip_type, bipRes:r.bip_result, hard:r.hard, inn:r.inning};
+    if(current && (p.batter !== current.batter || p.inn !== current.inn)){ current.outcome="incomplete"; pas.push(current); current=null; }
+    if(!current){ current = {batter:p.batter, hand:p.hand, inn:p.inn, pitches:[]}; b=0; s=0; }
     p._bBefore=b; p._sBefore=s;
     if(p.res==="Ball") b++;
     else if(p.res==="Called"||p.res==="Whiff") s++;

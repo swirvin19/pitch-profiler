@@ -296,7 +296,7 @@ let sb = null;
 let S = {
   pitcherId:null, pitcherName:"", date:"", level:"AAA", season:"2026", opp:"", gid:"", outingId:null,
   arsenal:["FF","SI","FC","CH","SV"], lineup:[],
-  inning:1, order:0, pitches:[], hands:{}, sel:{pitch:null, zone:null}
+  inning:1, order:0, paSeq:0, paInning:1, pitches:[], hands:{}, sel:{pitch:null, zone:null}
 };
 let pitchers = [];
 
@@ -410,7 +410,7 @@ async function applySetup(){
     });
     if(createErr){ setSync("err","Couldn't create outing: "+createErr.message); return; }
     S.outingId = createdRows[0].id;
-    S.pitches = []; S.order = 0; S.inning = 1;
+    S.pitches = []; S.order = 0; S.inning = 1; S.paSeq = 0; S.paInning = 1;
   }
   document.getElementById("setup").open = false;
   document.getElementById("gameTitle").textContent = S.pitcherName + " · " + S.date + " vs " + S.opp;
@@ -421,9 +421,11 @@ async function resumeFromServer(persistedOrder){
   const { data, error } = await sb.rpc("get_outing_pitches", {p_outing_id: S.outingId});
   if(error){ setSync("err","Couldn't resume: "+error.message); return; }
   S.pitches = []; S.order = 0;
-  let lastBatter = null, idx = -1;
+  let lastBatter = null, lastInning = null, idx = -1;
   (data||[]).forEach(row=>{
-    if(row.batter !== lastBatter){ idx++; lastBatter = row.batter; }
+    // A new plate appearance starts whenever the batter changes OR the inning changes —
+    // a count can never legitimately carry across an inning boundary, even for the same batter.
+    if(row.batter !== lastBatter || row.inning !== lastInning){ idx++; lastBatter = row.batter; lastInning = row.inning; }
     if(row.hand) S.hands[row.batter] = row.hand;
     const same = S.pitches.filter(p=>p.paIdx===idx);
     const last = same.slice(-1)[0];
@@ -446,6 +448,8 @@ async function resumeFromServer(persistedOrder){
   const inferredOrder = last && isTerminal(last) ? idx+1 : idx;
   S.order = Math.max(persistedOrder||0, inferredOrder, 0);
   S.inning = last ? last.inn : 1;
+  S.paSeq = last && isTerminal(last) ? idx+1 : idx;
+  S.paInning = S.inning;
 }
 async function persistOrder(){
   if(!S.outingId) return;
@@ -457,10 +461,20 @@ function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g, c=>({'&':'&amp;
 /* ---------- derived state ---------- */
 function batterAt(i){ if(S.lineup.length) return S.lineup[i % S.lineup.length]; return "B" + ((i % 9) + 1); }
 function isTerminal(p){ return p.res==="InPlay" || p.res==="HBP" || p.sAfter>=3 || p.bAfter>=4; }
+/* A plate-appearance count can NEVER survive an inning boundary — that's a hard rule with
+   no exceptions, regardless of what ended the previous half-inning (caught stealing, pickoff,
+   three straight outs mid-count, anything). This guarantees that even if a coach doesn't
+   remember to change batters, the count still resets the instant the inning changes. */
+function ensurePaBoundary(){
+  if(S.inning !== S.paInning){
+    S.paSeq++;
+    S.paInning = S.inning;
+  }
+}
 function liveCount(){
   let b=0,s=0;
-  for(const p of S.pitches){ if(p.paIdx !== S.order) continue; b = p.bAfter; s = p.sAfter; }
-  const last = S.pitches.filter(p=>p.paIdx===S.order).slice(-1)[0];
+  for(const p of S.pitches){ if(p.paIdx !== S.paSeq) continue; b = p.bAfter; s = p.sAfter; }
+  const last = S.pitches.filter(p=>p.paIdx===S.paSeq).slice(-1)[0];
   if(last && isTerminal(last)) return {b:0,s:0};
   return {b,s};
 }
@@ -470,7 +484,7 @@ function handAt(i){ return S.hands[batterAt(i)] || ""; }
 /* ---------- entry ---------- */
 function pickPitch(code){ S.sel.pitch = (S.sel.pitch===code?null:code); render(); }
 function pickZone(z){ S.sel.zone = (S.sel.zone===z?null:z); render(); }
-function bumpInn(d){ S.inning = Math.max(1, S.inning + d); render(); }
+function bumpInn(d){ S.inning = Math.max(1, S.inning + d); ensurePaBoundary(); render(); }
 
 function commit(res){
   if(!S.sel.pitch){ flash("Pick a pitch first"); return; }
@@ -478,6 +492,7 @@ function commit(res){
   push(res, null, null, null);
 }
 async function push(res, bip, bipRes, hard){
+  ensurePaBoundary(); // defensive: catches an inning change even if it didn't come through bumpInn
   const c = liveCount();
   let b=c.b, s=c.s;
   if(res==="Ball") b++;
@@ -485,13 +500,13 @@ async function push(res, bip, bipRes, hard){
   else if(res==="Foul" && s<2) s++;
 
   const p = {
-    inn:S.inning, paIdx:S.order, batter:batterAt(S.order), hand:handAt(S.order),
+    inn:S.inning, paIdx:S.paSeq, batter:batterAt(S.order), hand:handAt(S.order),
     pitch:S.sel.pitch, velo:v("fVelo").trim()?+v("fVelo").trim():null, zone:S.sel.zone,
     res, bip, bipRes, hard, bBefore:c.b, sBefore:c.s, bAfter:b, sAfter:s,
     seq: S.pitches.length
   };
   S.pitches.push(p);
-  if(isTerminal(p)) { S.order++; persistOrder(); }
+  if(isTerminal(p)) { S.order++; S.paSeq++; persistOrder(); }
   S.sel.pitch = null; S.sel.zone = null;
   render();
 
@@ -507,7 +522,7 @@ async function push(res, bip, bipRes, hard){
 async function undo(){
   const last = S.pitches.pop();
   if(!last) return;
-  if(isTerminal(last)) { S.order--; persistOrder(); }
+  if(isTerminal(last)) { S.order--; S.paSeq--; persistOrder(); }
   render();
   if(last.dbId){
     setSync("busy","Removing…");
@@ -530,7 +545,7 @@ async function setHand(h){
   setSync("ok","Synced");
 }
 function nextBatter(manual){
-  if(manual){ S.order++; persistOrder(); render(); }
+  if(manual){ S.order++; S.paSeq++; persistOrder(); render(); }
 }
 function toggleBatterPicker(){
   const box = document.getElementById("batterPicker");
@@ -552,6 +567,9 @@ function jumpToBatter(idx){
   const n = S.lineup.length || 9;
   const currentCycle = Math.floor(S.order / n);
   S.order = currentCycle*n + idx;
+  // Always start a fresh plate appearance, even if it's the same lineup slot as before —
+  // this is exactly what lets you correctly bring the same batter back for a new at-bat.
+  S.paSeq++;
   document.getElementById("batterPicker").style.display = "none";
   persistOrder();
   render();
@@ -677,7 +695,7 @@ function render(){
   const c = liveCount();
   document.getElementById("sCount").textContent = c.b+"-"+c.s;
   document.getElementById("sBatter").textContent = batterAt(S.order) + (handAt(S.order)?(" ("+handAt(S.order)+")"):"");
-  const paInGame = S.order+1;
+  const paInGame = S.paSeq+1;
   document.getElementById("sMeta").textContent = `PA ${paInGame} · ${ordinal(ttoFor(S.order))} time through`;
   document.getElementById("sInn").textContent = S.inning;
   if(document.getElementById("batterPicker").style.display !== "none") renderBatterPicker();
@@ -722,7 +740,7 @@ function renderSummary(){
   const g = S.pitches;
   document.getElementById("sumBoxes").innerHTML = `
     <div class="sbox"><div class="v">${g.length}</div><div class="k">Pitches</div></div>
-    <div class="sbox"><div class="v">${S.order}</div><div class="k">PA faced</div></div>
+    <div class="sbox"><div class="v">${S.paSeq}</div><div class="k">PA faced</div></div>
     <div class="sbox"><div class="v">${g.filter(p=>["Called","Whiff","Foul","InPlay"].includes(p.res)).length}</div><div class="k">Strikes</div></div>
     <div class="sbox"><div class="v">${g.filter(p=>p.res==="Whiff").length}</div><div class="k">Whiffs</div></div>`;
   const codes = [...new Set(g.map(p=>p.pitch))];
