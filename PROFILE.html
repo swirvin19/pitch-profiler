@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
 <style>
 :root{--bg:#0f1826;--surf:#16233a;--surf2:#1e2e49;--line:#2c405f;--txt:#eef2f7;--dim:#8b9cb5;--dimmer:#5d7a9c;
   --red:#e0483d;--grn:#2fa36a;--amb:#d99a2b;--blu:#3d8fd1;}
@@ -555,7 +555,11 @@ function drawTrend(){
   });
   const ctx = document.getElementById("trendCanvas");
   if(trendChart) trendChart.destroy();
-  if(!ctx || !window.Chart) return;
+  if(!ctx) return;
+  if(!window.Chart){
+    ctx.parentElement.innerHTML = '<p class="empty">Chart library failed to load — check your connection and refresh. The underlying data is fine, this is just the graph renderer.</p>';
+    return;
+  }
   trendChart = new Chart(ctx, {
     type:'line',
     data:{ labels, datasets:[{ label: code+" "+metricLabel, data, borderColor:'#3d8fd1', backgroundColor:'rgba(61,143,209,.15)',
