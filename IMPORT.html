@@ -7,6 +7,12 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Swirvin">
+<meta name="theme-color" content="#09090b">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 :root{
@@ -50,10 +56,20 @@ button.primary{background:var(--accent);border-color:var(--accent);color:#fff;wi
 .result{font-size:13px;padding:10px;border-radius:8px;margin-top:9px}
 .result.ok{background:#14301f;border:1px solid var(--grn);color:#7fd6a4}
 .result.err{background:#341417;border:1px solid var(--red);color:#f0a3a0}
+.appnav{display:flex;align-items:center;gap:4px;margin-bottom:12px;padding:8px;background:var(--surf);border:1px solid var(--line);border-radius:8px;overflow-x:auto}
+.appnav a{flex:0 0 auto;padding:7px 12px;border-radius:6px;font-family:'Chakra Petch',sans-serif;font-weight:700;font-size:13px;letter-spacing:.04em;text-transform:uppercase;color:var(--dim);text-decoration:none;white-space:nowrap}
+.appnav a.on{background:var(--accent);color:#fff}
+.appnav a.logo{color:var(--accent);margin-right:2px}
 </style>
 </head>
 <body>
 <div class="wrap">
+<nav class="appnav">
+  <a href="index.html" class="logo">SWIRVIN</a>
+  <a href="CHART.html">Chart</a>
+  <a href="PROFILE.html">Profile</a>
+  <a href="IMPORT.html" class="on">Import</a>
+</nav>
 <h1>Import Line Report</h1>
 
 <script>

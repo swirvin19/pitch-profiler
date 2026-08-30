@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>Swirvin Analytics</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Swirvin">
+<meta name="theme-color" content="#09090b">
+<style>
+:root{
+  --bg:#09090b; --surf:#131316; --surf2:#1c1c21; --line:#2a2a30;
+  --txt:#f5f4f2; --dim:#8c8a92; --dimmer:#56545c;
+  --red:#c81e3a; --grn:#2fd980; --amb:#ffc94d; --accent:#ff2140;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0;height:100%}
+body{background:radial-gradient(ellipse at 50% -10%, #16090c 0%, #09090b 60%);
+  color:var(--txt);font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;
+  -webkit-font-smoothing:antialiased;padding:40px 16px;min-height:100vh;display:flex;flex-direction:column}
+.wrap{max-width:440px;margin:auto;width:100%}
+.kicker{font-family:'Chakra Petch',sans-serif;font-size:13px;letter-spacing:.4em;text-transform:uppercase;
+  color:var(--accent);font-weight:600;text-align:center}
+h1{font-family:'Chakra Petch',sans-serif;font-size:34px;font-weight:700;margin:8px 0 36px;text-align:center;
+  text-shadow:0 0 30px #ff214044}
+.tile{display:flex;align-items:center;gap:14px;background:var(--surf);border:1px solid var(--line);
+  border-radius:10px;padding:16px;margin-bottom:12px;text-decoration:none;color:var(--txt);
+  transition:transform .06s ease, border-color .15s ease}
+.tile:active{transform:scale(.98)}
+.tile:hover{border-color:var(--accent)}
+.tile .glyph{flex:0 0 auto;width:44px;height:44px;border-radius:8px;background:var(--surf2);
+  display:flex;align-items:center;justify-content:center;font-family:'Chakra Petch',sans-serif;
+  font-weight:700;font-size:15px;color:var(--accent);border:1px solid var(--line)}
+.tile .tx{flex:1;min-width:0}
+.tile .tt{font-family:'Chakra Petch',sans-serif;font-weight:700;font-size:16px;letter-spacing:.02em}
+.tile .td{font-size:12.5px;color:var(--dim);margin-top:2px}
+.foot{text-align:center;color:var(--dimmer);font-size:11px;letter-spacing:.08em;text-transform:uppercase;
+  margin-top:30px;font-family:'Chakra Petch',sans-serif}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="kicker">Swirvin Analytics</div>
+  <h1>Pitching System</h1>
+
+  <a class="tile" href="CHART.html">
+    <div class="glyph">CH</div>
+    <div class="tx"><div class="tt">Chart a game</div><div class="td">Live pitch-by-pitch entry, resume anytime</div></div>
+  </a>
+
+  <a class="tile" href="PROFILE.html">
+    <div class="glyph">PR</div>
+    <div class="tx"><div class="tt">Player profile</div><div class="td">Outings, sequences, attack plans, rosters</div></div>
+  </a>
+
+  <a class="tile" href="IMPORT.html">
+    <div class="glyph">IM</div>
+    <div class="tx"><div class="tt">Import line report</div><div class="td">Box scores and movement/spin from other reports</div></div>
+  </a>
+
+  <div class="foot">Add to home screen for full-screen access</div>
+</div>
+</body>
+</html>

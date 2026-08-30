@@ -7,6 +7,12 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Swirvin">
+<meta name="theme-color" content="#09090b">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 :root{
@@ -52,6 +58,10 @@ button.sel{background:var(--accent);border-color:var(--accent);color:#fff}
 button.sm{padding:8px 10px;font-size:13px;min-height:38px;flex:0 0 auto}
 button.ghost{background:transparent;color:var(--dim)}
 button.danger{background:transparent;color:var(--red);border-color:var(--red)}
+.appnav{display:flex;align-items:center;gap:4px;margin-bottom:12px;padding:8px;background:var(--surf);border:1px solid var(--line);border-radius:8px;overflow-x:auto}
+.appnav a{flex:0 0 auto;padding:7px 12px;border-radius:6px;font-family:'Chakra Petch',sans-serif;font-weight:700;font-size:13px;letter-spacing:.04em;text-transform:uppercase;color:var(--dim);text-decoration:none;white-space:nowrap}
+.appnav a.on{background:var(--accent);color:#fff}
+.appnav a.logo{color:var(--accent);margin-right:2px}
 .pitchbtns button{flex:1 1 60px;font-family:'Chakra Petch',sans-serif;font-size:18px;font-weight:700;letter-spacing:.03em}
 .zone{display:grid;grid-template-columns:repeat(5,1fr);gap:3px;max-width:290px;margin:0 auto}
 .zc{aspect-ratio:1;border-radius:5px;border:1px solid var(--line);background:var(--surf2);
@@ -124,6 +134,12 @@ body.kb .kbbar{display:block}
 </head>
 <body>
 <div class="wrap">
+<nav class="appnav">
+  <a href="index.html" class="logo">SWIRVIN</a>
+  <a href="CHART.html" class="on">Chart</a>
+  <a href="PROFILE.html">Profile</a>
+  <a href="IMPORT.html">Import</a>
+</nav>
 
 <!-- ============ FILL THESE TWO IN BEFORE HOSTING ============ -->
 <script>

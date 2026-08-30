@@ -7,6 +7,12 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Swirvin">
+<meta name="theme-color" content="#09090b">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
 <style>
@@ -71,6 +77,10 @@ td.pcode{font-family:'Chakra Petch',sans-serif;font-weight:700;font-size:15px}
 button.danger{background:transparent;color:var(--red);border-color:var(--red)}
 button.sm{padding:6px 10px;font-size:12.5px;min-height:34px}
 button.ghost{background:transparent;color:var(--dim)}
+.appnav{display:flex;align-items:center;gap:4px;margin-bottom:12px;padding:8px;background:var(--surf);border:1px solid var(--line);border-radius:8px;overflow-x:auto}
+.appnav a{flex:0 0 auto;padding:7px 12px;border-radius:6px;font-family:'Chakra Petch',sans-serif;font-weight:700;font-size:13px;letter-spacing:.04em;text-transform:uppercase;color:var(--dim);text-decoration:none;white-space:nowrap}
+.appnav a.on{background:var(--accent);color:#fff}
+.appnav a.logo{color:var(--accent);margin-right:2px}
 .outrow{display:flex;align-items:center;gap:8px;background:var(--surf2);border:1px solid var(--line);
   border-radius:8px;padding:9px 10px;margin-bottom:6px}
 .outrow .ot{font-weight:600;font-size:14px}
@@ -79,6 +89,12 @@ button.ghost{background:transparent;color:var(--dim)}
 </head>
 <body>
 <div class="wrap">
+<nav class="appnav">
+  <a href="index.html" class="logo">SWIRVIN</a>
+  <a href="CHART.html">Chart</a>
+  <a href="PROFILE.html" class="on">Profile</a>
+  <a href="IMPORT.html">Import</a>
+</nav>
 <h1>Player Profile</h1>
 
 <!-- ============ FILL THESE TWO IN — same values as CHART.html ============ -->
