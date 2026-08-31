@@ -86,6 +86,18 @@ td:first-child{text-align:left;font-family:'Chakra Petch',sans-serif;font-weight
   box-shadow:0 0 16px #ff214055}
 
 .empty{text-align:center;color:var(--sub);padding:30px;font-size:14px;background:var(--surf)}
+.toptabs{max-width:760px;margin:0 auto 12px;display:flex;gap:6px}
+.toptabs button{flex:1;background:var(--surf);border:1px solid var(--line);color:var(--sub);border-radius:8px;
+  padding:11px 6px;font-family:'Chakra Petch',sans-serif;font-size:14px;font-weight:700;cursor:pointer;text-transform:uppercase;letter-spacing:.03em}
+.toptabs button.on{background:var(--accent);border-color:var(--accent);color:#fff}
+.localtab{display:none}.localtab.on{display:block}
+.hpick{max-width:760px;margin:0 auto 16px;background:var(--surf);border:1px solid var(--line);border-radius:8px;padding:14px}
+.hpick label{font-size:11px;color:var(--sub);text-transform:uppercase;letter-spacing:.1em;font-weight:600;font-family:'Chakra Petch',sans-serif}
+.hpick select{width:100%;background:var(--bg);border:1px solid var(--line);border-radius:6px;color:var(--txt);
+  padding:9px 10px;font-size:14px;font-family:inherit;margin-top:6px}
+.hrow{max-width:760px;margin:0 auto 8px;background:var(--surf);border:1px solid var(--line);border-radius:8px;padding:12px 14px}
+.hrow .hn{font-family:'Chakra Petch',sans-serif;font-weight:700;font-size:16px;color:var(--accent)}
+.hrow .hm{font-size:12px;color:var(--sub);margin-top:2px}
 
 @media print{
   body{background:#fff;padding:0}
@@ -106,15 +118,61 @@ const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
   <button onclick="window.print()">Print / Save as PDF</button>
 </div>
 
-<div class="wrap" id="report">
-  <div class="empty">This report link is invalid or missing. Ask your coach for the correct link.</div>
+<div class="toptabs" id="toptabs" style="display:none">
+  <button class="on" onclick="showLocalTab('report')">My Report</button>
+  <button onclick="showLocalTab('hitters')">Look Up Hitters</button>
+</div>
+
+<div class="localtab on" id="localtab-report">
+  <div class="wrap" id="report">
+    <div class="empty">This report link is invalid or missing. Ask your coach for the correct link.</div>
+  </div>
+</div>
+
+<div class="localtab" id="localtab-hitters">
+  <div class="hpick">
+    <label>Team</label>
+    <select id="teamPicker" onchange="loadTeamRoster()"></select>
+  </div>
+  <div id="hittersBody"></div>
 </div>
 
 <script>
 let sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+let currentToken = null;
+let hittersAll = [];
 
 function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 function qparam(name){ return new URLSearchParams(location.search).get(name); }
+
+function showLocalTab(name){
+  document.querySelectorAll(".localtab").forEach(t=>t.classList.remove("on"));
+  document.querySelectorAll(".toptabs button").forEach(b=>b.classList.remove("on"));
+  document.getElementById("localtab-"+name).classList.add("on");
+  event.target.classList.add("on");
+  if(name==="hitters" && !window._hittersLoaded) loadHittersList();
+}
+async function loadHittersList(){
+  window._hittersLoaded = true;
+  const box = document.getElementById("hittersBody");
+  const { data, error } = await sb.rpc("token_list_hitters", {p_token: currentToken});
+  if(error){ box.innerHTML = `<div class="empty">${esc(error.message)}</div>`; return; }
+  hittersAll = data || [];
+  const teams = [...new Set(hittersAll.map(h=>h.team).filter(Boolean))].sort();
+  document.getElementById("teamPicker").innerHTML =
+    '<option value="">— select a team —</option>' + teams.map(t=>`<option value="${esc(t)}">${esc(t)}</option>`).join("");
+  box.innerHTML = '<div class="empty">Pick a team to see their hitters.</div>';
+}
+function loadTeamRoster(){
+  const team = document.getElementById("teamPicker").value;
+  const box = document.getElementById("hittersBody");
+  if(!team){ box.innerHTML = '<div class="empty">Pick a team to see their hitters.</div>'; return; }
+  const roster = hittersAll.filter(h=>h.team===team).sort((a,b)=>a.name.localeCompare(b.name));
+  if(!roster.length){ box.innerHTML = '<div class="empty">No hitters logged for this team yet.</div>'; return; }
+  box.innerHTML = roster.map(h=>`
+    <div class="hrow"><div class="hn">${esc(h.name)}${h.hand?` (${esc(h.hand)})`:""}</div>
+    <div class="hm">${esc(h.notes||"")}</div></div>`).join("");
+}
 
 async function boot(){
   const token = qparam("token");
@@ -122,12 +180,14 @@ async function boot(){
     document.getElementById("report").innerHTML = '<div class="empty">This report link is invalid or missing. Ask your coach for the correct link.</div>';
     return;
   }
+  currentToken = token;
   document.getElementById("report").innerHTML = '<div class="empty">Loading…</div>';
   const { data, error } = await sb.rpc("get_report", {p_token: token});
   if(error || !data){
     document.getElementById("report").innerHTML = '<div class="empty">This report link is invalid or has expired. Ask your coach for the correct link.</div>';
     return;
   }
+  document.getElementById("toptabs").style.display = "flex";
   buildReportFromPayload(data);
 }
 
